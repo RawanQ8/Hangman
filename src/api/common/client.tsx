@@ -1,5 +1,6 @@
-import { Env } from '@env';
 import axios from 'axios';
 export const client = axios.create({
-  baseURL: Env.API_URL,
+  baseURL: 'http://localhost:3000/',
+  timeout: 10000,
 });
+export default client;
