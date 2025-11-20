@@ -146,7 +146,7 @@ export default function Hangman() {
   const [correctLetters, setCorrectLetters] = useState<string[]>([]);
   const [wrongLetters, setWrongLetters] = useState<string[]>([]);
   const [wordToGuess, setWordToGuess] = useState('');
-  const [isPlaying, setIsPlaying] = useState<boolean>(true);
+  const [isUserPlaying, setIsUserPlaying] = useState<boolean>(true);
 
   const [currentGuess, setCurrentGuess] = useState('');
   const [showConfetti, setShowConfetti] = useState(false);
@@ -157,6 +157,8 @@ export default function Hangman() {
   const [isMultiplayer, setIsMultiplayer] = useState(false);
 
   const lettersToGuess = Array.from(wordToGuess);
+
+  const alphabet = 'QWERTYUIIOPASDFGHJKLZXCVBNM'.split('').sort();
 
   const {
     data: wordList = [],
@@ -230,20 +232,18 @@ export default function Hangman() {
 
   useEffect(() => {
     if (isMultiplayer) {
-      //if (!isPlaying) cpuPlay();
-      if (!isPlaying) {
+      //if (!isUserPlaying) cpuPlay();
+      if (!isUserPlaying) {
         setTimeout(() => {
-          setIsPlaying(!isPlaying);
+          setIsUserPlaying(!isUserPlaying);
           cpuPlay();
         }, 1000);
       }
-
-      console.log(isPlaying);
     }
-  }, [isPlaying, isMultiplayer]);
+  }, [isUserPlaying, isMultiplayer]);
 
   const onKeyPress = (letter: string) => {
-    if (!isPlaying) return;
+    if (!isUserPlaying) return;
     if (isLoadingWords || wordsError) return;
     if (gameWon || gameLost) return;
     handleGuess(letter);
@@ -260,23 +260,21 @@ export default function Hangman() {
       }
     }
     if (isMultiplayer) {
-      // console.log('multiplayer mode');
-      // console.log('is playing will be set to: ', !isPlaying);
-      setIsPlaying(!isPlaying);
-      // console.log('is playing: ', isPlaying);
+      setIsUserPlaying(!isUserPlaying);
     }
   };
 
   const cpuPlay = () => {
-    const alphabet = 'QWERTYUIIOPASDFGHJKLZXCVBNM'.split('').sort();
-    let possibleGuesses = alphabet.filter(
-      (letter: string) => !guessedLetters.includes(letter)
-    );
-    const guessIndex = Math.floor(Math.random() * possibleGuesses.length);
-    const guess = possibleGuesses[guessIndex];
-    setCurrentGuess(guess);
-    console.log(currentGuess);
-    handleGuess(currentGuess);
+    if (!gameWon && !gameLost && wrongGuessCount < 6) {
+      let possibleGuesses = alphabet.filter(
+        (letter: string) => !guessedLetters.includes(letter)
+      );
+      const guessIndex = Math.floor(Math.random() * possibleGuesses.length);
+      const guess = possibleGuesses[guessIndex];
+      setCurrentGuess(guess);
+      console.log('guess: ', guess);
+      handleGuess(guess);
+    }
   };
 
   return (
@@ -311,17 +309,24 @@ export default function Hangman() {
             </View>
           </>
         )}
+        {isMultiplayer && (
+          <Text className="text-xl tracking-widest text-blue-800">
+            {' '}
+            Multiplayer mode
+          </Text>
+        )}
         <DisplayHangmanImage wrongGuessCount={wrongGuessCount} />
         <DisplayWrongLetters wrongGuessedLetters={wrongLetters} />
         <Text className="text-4xl font-bold tracking-widest">
           {displayedLetters.join(' ')}
         </Text>
+
         {showKeyboard ? (
           <DisplayKeyboard
             onKeyPress={onKeyPress}
             guessedLetters={guessedLetters}
             correctLetters={correctLetters}
-            locked={!isPlaying}
+            locked={!isUserPlaying}
           />
         ) : (
           <TextInput
@@ -354,21 +359,6 @@ export default function Hangman() {
           size="large"
           onToggle={() => setShowKeyboard(!showKeyboard)}
         />
-
-        {/* {isMultiplayer && (
-          <ToggleSwitch
-            isOn={!isPlaying}
-            onColor="green"
-            offColor="gray"
-            label="Computer Playing"
-            labelStyle={{ color: 'black', fontWeight: '400' }}
-            size="large"
-            onToggle={() => {
-              setIsPlaying(!isPlaying);
-              if (!isPlaying) cpuPlay();
-            }}
-          />
-        )} */}
         <Button
           className="mt-4 rounded-lg bg-green-900"
           onPress={() => {
