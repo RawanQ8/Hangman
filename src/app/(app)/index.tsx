@@ -228,6 +228,20 @@ export default function Hangman() {
     }
   }, [wrongGuessCount, gameLost, wordToGuess]);
 
+  useEffect(() => {
+    if (isMultiplayer) {
+      //if (!isPlaying) cpuPlay();
+      if (!isPlaying) {
+        setTimeout(() => {
+          setIsPlaying(!isPlaying);
+          cpuPlay();
+        }, 1000);
+      }
+
+      console.log(isPlaying);
+    }
+  }, [isPlaying, isMultiplayer]);
+
   const onKeyPress = (letter: string) => {
     if (!isPlaying) return;
     if (isLoadingWords || wordsError) return;
@@ -246,10 +260,10 @@ export default function Hangman() {
       }
     }
     if (isMultiplayer) {
-      console.log('multiplayer mode');
-      console.log('is playing will be set to: ', !isPlaying);
+      // console.log('multiplayer mode');
+      // console.log('is playing will be set to: ', !isPlaying);
       setIsPlaying(!isPlaying);
-      console.log('is playing: ', isPlaying);
+      // console.log('is playing: ', isPlaying);
     }
   };
 
@@ -341,7 +355,7 @@ export default function Hangman() {
           onToggle={() => setShowKeyboard(!showKeyboard)}
         />
 
-        {isMultiplayer && (
+        {/* {isMultiplayer && (
           <ToggleSwitch
             isOn={!isPlaying}
             onColor="green"
@@ -354,10 +368,13 @@ export default function Hangman() {
               if (!isPlaying) cpuPlay();
             }}
           />
-        )}
+        )} */}
         <Button
           className="mt-4 rounded-lg bg-green-900"
-          onPress={() => setIsMultiplayer(!isMultiplayer)}
+          onPress={() => {
+            setIsMultiplayer(!isMultiplayer);
+            refreshGame();
+          }}
         >
           <Text className="text-white">
             {isMultiplayer ? 'Single Game' : 'Multiplayer Game'}
