@@ -28,22 +28,38 @@ const KeyboardKey = ({
   onPress,
 }: {
   letter: string;
-  status?: 'unknown' | 'present' | 'absent';
+  status?: 'default' | 'present' | 'absent' | 'locked';
   onPress: (letter: string) => void;
-}) => (
-  <TouchableOpacity onPress={() => onPress(letter)}>
-    <Text
-      className={`m-1 rounded border border-gray-300 p-3 ${status === 'present' ? 'bg-green-500' : status === 'absent' ? 'bg-yellow-500' : 'bg-white'}`}
-    >
-      {letter}
-    </Text>
-  </TouchableOpacity>
-);
+}) => {
+  let statusStyle = '';
+  switch (status) {
+    case 'present':
+      statusStyle = 'bg-green-500';
+      break;
+    case 'absent':
+      statusStyle = 'bg-yellow-500';
+      break;
+    case 'locked':
+      statusStyle = 'bg-gray-300';
+      break;
+    default:
+      statusStyle = 'bg-white';
+  }
+
+  return (
+    <TouchableOpacity onPress={() => onPress(letter)}>
+      <Text className={`m-1 rounded border border-gray-300 p-3 ${statusStyle}`}>
+        {letter}
+      </Text>
+    </TouchableOpacity>
+  );
+};
 
 const DisplayKeyboard = ({
   onKeyPress,
   guessedLetters,
   correctLetters,
+  locked = false,
 }: {
   guessedLetters: string[];
   correctLetters: string[];
@@ -56,7 +72,7 @@ const DisplayKeyboard = ({
   ];
 
   return (
-    <View className="mt-8 space-y-2 rounded p-4">
+    <View className={`mt-8 space-y-2 rounded p-4`}>
       {rows.map((row, i) => (
         <View key={`${row}_${i}`} className="flex-row justify-center space-x-2">
           {row.map((key) => (
@@ -64,11 +80,13 @@ const DisplayKeyboard = ({
               key={key}
               letter={key}
               status={
-                guessedLetters.includes(key)
-                  ? correctLetters.includes(key)
-                    ? 'present'
-                    : 'absent'
-                  : 'unknown'
+                locked
+                  ? 'locked'
+                  : guessedLetters.includes(key)
+                    ? correctLetters.includes(key)
+                      ? 'present'
+                      : 'absent'
+                    : 'default'
               }
               onPress={onKeyPress}
             />
@@ -128,6 +146,7 @@ export default function Hangman() {
   const [correctLetters, setCorrectLetters] = useState<string[]>([]);
   const [wrongLetters, setWrongLetters] = useState<string[]>([]);
   const [wordToGuess, setWordToGuess] = useState('');
+  const [isPlaying, setIsPlaying] = useState<boolean>(true);
 
   const [currentGuess, setCurrentGuess] = useState('');
   const [showConfetti, setShowConfetti] = useState(false);
@@ -135,13 +154,9 @@ export default function Hangman() {
   const [gameWon, setGameWon] = useState(false);
   const [gameLost, setGameLost] = useState(false);
 
-  const lettersToGuess = Array.from(wordToGuess);
+  const [isMultiplayer, setIsMultiplayer] = useState(false);
 
-  // const fetchWords = useCallback(async () => {
-  //   console.log('Fetching words from server...');
-  //   const response = await client.get('/words');
-  //   return response.data as string[];
-  // }, []);
+  const lettersToGuess = Array.from(wordToGuess);
 
   const {
     data: wordList = [],
@@ -152,9 +167,7 @@ export default function Hangman() {
     queryKey: ['words', 'default'],
     staleTime: 1000 * 60 * 5,
   });
-  // console.log('Word List:', wordList);
-  // console.log('Words Loading:', isLoadingWords);
-  // console.log('Words Error:', wordsError);
+
   const getNewWordToGuess = useCallback(async (): Promise<void> => {
     if (wordList.length === 0) {
       return;
@@ -216,9 +229,13 @@ export default function Hangman() {
   }, [wrongGuessCount, gameLost, wordToGuess]);
 
   const onKeyPress = (letter: string) => {
+    if (!isPlaying) return;
     if (isLoadingWords || wordsError) return;
     if (gameWon || gameLost) return;
+    handleGuess(letter);
+  };
 
+  const handleGuess = (letter: string) => {
     if (!guessedLetters.includes(letter)) {
       setGuessedLetters([...guessedLetters, letter]);
       if (!wordToGuess.includes(letter)) {
@@ -228,6 +245,24 @@ export default function Hangman() {
         setCorrectLetters([...correctLetters, letter]);
       }
     }
+    if (isMultiplayer) {
+      console.log('multiplayer mode');
+      console.log('is playing will be set to: ', !isPlaying);
+      setIsPlaying(!isPlaying);
+      console.log('is playing: ', isPlaying);
+    }
+  };
+
+  const cpuPlay = () => {
+    const alphabet = 'QWERTYUIIOPASDFGHJKLZXCVBNM'.split('').sort();
+    let possibleGuesses = alphabet.filter(
+      (letter: string) => !guessedLetters.includes(letter)
+    );
+    const guessIndex = Math.floor(Math.random() * possibleGuesses.length);
+    const guess = possibleGuesses[guessIndex];
+    setCurrentGuess(guess);
+    console.log(currentGuess);
+    handleGuess(currentGuess);
   };
 
   return (
@@ -272,6 +307,7 @@ export default function Hangman() {
             onKeyPress={onKeyPress}
             guessedLetters={guessedLetters}
             correctLetters={correctLetters}
+            locked={!isPlaying}
           />
         ) : (
           <TextInput
@@ -304,6 +340,29 @@ export default function Hangman() {
           size="large"
           onToggle={() => setShowKeyboard(!showKeyboard)}
         />
+
+        {isMultiplayer && (
+          <ToggleSwitch
+            isOn={!isPlaying}
+            onColor="green"
+            offColor="gray"
+            label="Computer Playing"
+            labelStyle={{ color: 'black', fontWeight: '400' }}
+            size="large"
+            onToggle={() => {
+              setIsPlaying(!isPlaying);
+              if (!isPlaying) cpuPlay();
+            }}
+          />
+        )}
+        <Button
+          className="mt-4 rounded-lg bg-green-900"
+          onPress={() => setIsMultiplayer(!isMultiplayer)}
+        >
+          <Text className="text-white">
+            {isMultiplayer ? 'Single Game' : 'Multiplayer Game'}
+          </Text>
+        </Button>
       </SafeAreaView>
     </>
   );
