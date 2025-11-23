@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Image, TextInput } from 'react-native';
+import { Image, ScrollView, TextInput } from 'react-native';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import ToggleSwitch from 'toggle-switch-react-native';
 
@@ -21,6 +21,8 @@ import {
   View,
 } from '@/components/ui';
 import { Text } from '@/components/ui/text';
+
+const ALPHABET = 'QWERTYUIOPASDFGHJKLZXCVBNM'.split('').sort();
 
 const KeyboardKey = ({
   letter,
@@ -64,6 +66,7 @@ const DisplayKeyboard = ({
   guessedLetters: string[];
   correctLetters: string[];
   onKeyPress: (letter: string) => void;
+  locked: boolean;
 }) => {
   const rows = [
     ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
@@ -153,12 +156,11 @@ export default function Hangman() {
   const [showKeyboard, setShowKeyboard] = useState(true);
   const [gameWon, setGameWon] = useState(false);
   const [gameLost, setGameLost] = useState(false);
-
   const [isMultiplayer, setIsMultiplayer] = useState(false);
+  //const [playerCount, setPlayerCount] = useState(2);
+  const [isComputerOnly, setIsComputerOnly] = useState(false);
 
   const lettersToGuess = Array.from(wordToGuess);
-
-  const alphabet = 'QWERTYUIIOPASDFGHJKLZXCVBNM'.split('').sort();
 
   const {
     data: wordList = [],
@@ -188,6 +190,7 @@ export default function Hangman() {
   );
 
   const refreshGame = () => {
+    setIsComputerOnly(false);
     setWrongGuessCount(0);
     setWrongLetters([]);
     setGuessedLetters([]);
@@ -200,6 +203,54 @@ export default function Hangman() {
     setGameWon(false);
     setGameLost(false);
   };
+
+  const onKeyPress = (letter: string) => {
+    if (!isUserPlaying) return;
+    if (isLoadingWords || wordsError) return;
+    if (gameWon || gameLost) return;
+    handleGuess(letter);
+  };
+
+  const handleGuess = useCallback(
+    (letter: string) => {
+      let guessApplied = false;
+      setGuessedLetters((prevGuessed) => {
+        if (prevGuessed.includes(letter)) return prevGuessed;
+
+        guessApplied = true;
+        const isCorrect = wordToGuess.includes(letter);
+        if (isCorrect) {
+          setCorrectLetters((prev) => [...prev, letter]);
+        } else {
+          setWrongGuessCount((prev) => prev + 1);
+          setWrongLetters((prev) => [...prev, letter]);
+        }
+
+        return [...prevGuessed, letter];
+      });
+
+      if (isMultiplayer && guessApplied) {
+        setIsUserPlaying((current) => !current);
+      }
+    },
+    [isMultiplayer, wordToGuess]
+  );
+
+  const cpuPlay = useCallback(() => {
+    if (gameWon || gameLost || wrongGuessCount >= 6) return;
+
+    const possibleGuesses = ALPHABET.filter(
+      (letter: string) => !guessedLetters.includes(letter)
+    );
+
+    if (possibleGuesses.length === 0) return;
+
+    const guessIndex = Math.floor(Math.random() * possibleGuesses.length);
+    const guess = possibleGuesses[guessIndex];
+    setCurrentGuess(guess);
+    console.log('guess: ', guess);
+    handleGuess(guess);
+  }, [gameLost, gameWon, guessedLetters, handleGuess, wrongGuessCount]);
 
   useEffect(() => {
     if (wordList && wordList.length > 1 && wordToGuess === '') {
@@ -234,142 +285,152 @@ export default function Hangman() {
     if (isMultiplayer) {
       //if (!isUserPlaying) cpuPlay();
       if (!isUserPlaying) {
+        console.log('Cpu playing');
         setTimeout(() => {
-          setIsUserPlaying(!isUserPlaying);
+          setIsUserPlaying((current) => !current);
           cpuPlay();
         }, 1000);
       }
     }
   }, [isUserPlaying, isMultiplayer]);
 
-  const onKeyPress = (letter: string) => {
-    if (!isUserPlaying) return;
-    if (isLoadingWords || wordsError) return;
-    if (gameWon || gameLost) return;
-    handleGuess(letter);
-  };
-
-  const handleGuess = (letter: string) => {
-    if (!guessedLetters.includes(letter)) {
-      setGuessedLetters([...guessedLetters, letter]);
-      if (!wordToGuess.includes(letter)) {
-        setWrongGuessCount(wrongGuessCount + 1);
-        setWrongLetters([...wrongLetters, letter]);
-      } else {
-        setCorrectLetters([...correctLetters, letter]);
-      }
+  useEffect(() => {
+    if (!isComputerOnly) return;
+    if (gameWon || gameLost || wrongGuessCount >= 6) {
+      setIsComputerOnly(false);
+      setTimeout(refreshGame, 3500);
+      return;
     }
-    if (isMultiplayer) {
-      setIsUserPlaying(!isUserPlaying);
-    }
-  };
-
-  const cpuPlay = () => {
-    if (!gameWon && !gameLost && wrongGuessCount < 6) {
-      let possibleGuesses = alphabet.filter(
-        (letter: string) => !guessedLetters.includes(letter)
-      );
-      const guessIndex = Math.floor(Math.random() * possibleGuesses.length);
-      const guess = possibleGuesses[guessIndex];
-      setCurrentGuess(guess);
-      console.log('guess: ', guess);
-      handleGuess(guess);
-    }
-  };
+    const timer = setTimeout(() => {
+      cpuPlay();
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [cpuPlay, gameLost, gameWon, isComputerOnly, wrongGuessCount]);
 
   return (
     <>
       <FocusAwareStatusBar />
-      <SafeAreaView className="flex-1 items-center justify-center gap-3 p-4">
-        {/* <Text className="text-2xl text-blue-800">Hangman Game</Text> */}
-        {showConfetti && (
-          <ConfettiCannon
-            count={200}
-            origin={{ x: -10, y: 0 }}
-            autoStart={true}
-            fadeOut={true}
-            explosionSpeed={350}
-          />
-        )}
-        {gameWon && (
-          <Text className="mb-3 text-xl font-bold text-blue-800">
-            Congratulations You Win!
-          </Text>
-        )}
-        {gameLost && (
-          <>
-            <Text className="mb-3 text-xl font-semibold text-red-800">
-              You Lost 😢
-            </Text>
-            <View className="flex flex-row">
-              <Text className="mb-3 text-xl ">Correct Word: </Text>
-              <Text className="mb-3 text-xl font-semibold text-green-800">
-                {wordToGuess}
-              </Text>
-            </View>
-          </>
-        )}
-        {isMultiplayer && (
-          <Text className="text-xl tracking-widest text-blue-800">
-            {' '}
-            Multiplayer mode
-          </Text>
-        )}
-        <DisplayHangmanImage wrongGuessCount={wrongGuessCount} />
-        <DisplayWrongLetters wrongGuessedLetters={wrongLetters} />
-        <Text className="text-4xl font-bold tracking-widest">
-          {displayedLetters.join(' ')}
-        </Text>
-
-        {showKeyboard ? (
-          <DisplayKeyboard
-            onKeyPress={onKeyPress}
-            guessedLetters={guessedLetters}
-            correctLetters={correctLetters}
-            locked={!isUserPlaying}
-          />
-        ) : (
-          <TextInput
-            placeholder="A"
-            value={currentGuess}
-            onChangeText={setCurrentGuess}
-            className="mb-5 mt-4 w-20 rounded border
-             border-gray-300 p-6 text-center text-xl"
-            maxLength={1}
-            onSubmitEditing={() => {
-              onKeyPress(currentGuess);
-              setCurrentGuess('');
-            }}
-            autoFocus={true}
-            autoCapitalize="characters"
-            editable={!gameWon && !gameLost}
-          />
-        )}
-        <Button className="mt-4 rounded-lg bg-blue-900" onPress={refreshGame}>
-          <Text className="text-white">
-            {gameWon || gameLost ? 'New Game' : 'Start Over'}
-          </Text>
-        </Button>
-        <ToggleSwitch
-          isOn={!showKeyboard}
-          onColor="green"
-          offColor="gray"
-          label="Hide Keyboard"
-          labelStyle={{ color: 'black', fontWeight: '400' }}
-          size="large"
-          onToggle={() => setShowKeyboard(!showKeyboard)}
-        />
-        <Button
-          className="mt-4 rounded-lg bg-green-900"
-          onPress={() => {
-            setIsMultiplayer(!isMultiplayer);
-            refreshGame();
-          }}
+      <SafeAreaView className="flex-1">
+        <ScrollView
+          className="scroll-m-2 px-4"
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
         >
-          <Text className="text-white">
-            {isMultiplayer ? 'Single Game' : 'Multiplayer Game'}
-          </Text>
-        </Button>
+          <View className="flex-1 items-center justify-center gap-3">
+            {/* <Text className="text-2xl text-blue-800">Hangman Game</Text> */}
+            {showConfetti && (
+              <ConfettiCannon
+                count={200}
+                origin={{ x: -10, y: 0 }}
+                autoStart={true}
+                fadeOut={true}
+                explosionSpeed={350}
+              />
+            )}
+            {gameWon && (
+              <Text className="mb-3 text-xl font-bold text-blue-800">
+                Congratulations You Win!
+              </Text>
+            )}
+            {gameLost && (
+              <>
+                <Text className="mb-3 text-xl font-semibold text-red-800">
+                  You Lost 😢
+                </Text>
+                <View className="flex flex-row">
+                  <Text className="mb-3 text-xl ">Correct Word: </Text>
+                  <Text className="mb-3 text-xl font-semibold text-green-800">
+                    {wordToGuess}
+                  </Text>
+                </View>
+              </>
+            )}
+            {isMultiplayer && (
+              <Text className="text-xl tracking-widest text-blue-800">
+                {' '}
+                Multiplayer mode
+              </Text>
+            )}
+            <DisplayHangmanImage wrongGuessCount={wrongGuessCount} />
+            <DisplayWrongLetters wrongGuessedLetters={wrongLetters} />
+            <Text className="text-4xl font-bold tracking-widest">
+              {displayedLetters.join(' ')}
+            </Text>
+
+            {showKeyboard ? (
+              <DisplayKeyboard
+                onKeyPress={onKeyPress}
+                guessedLetters={guessedLetters}
+                correctLetters={correctLetters}
+                locked={!isUserPlaying}
+              />
+            ) : (
+              <TextInput
+                placeholder="A"
+                value={currentGuess}
+                onChangeText={setCurrentGuess}
+                className="mb-5 mt-4 w-20 rounded border
+             border-gray-300 p-6 text-center text-xl"
+                maxLength={1}
+                onSubmitEditing={() => {
+                  onKeyPress(currentGuess);
+                  setCurrentGuess('');
+                }}
+                autoFocus={true}
+                autoCapitalize="characters"
+                editable={!gameWon && !gameLost && isUserPlaying}
+              />
+            )}
+            <Button
+              className="mt-4 rounded-lg bg-blue-900"
+              onPress={refreshGame}
+            >
+              <Text className="text-white">
+                {gameWon || gameLost ? 'New Game' : 'Start Over'}
+              </Text>
+            </Button>
+            <ToggleSwitch
+              isOn={!showKeyboard}
+              onColor="green"
+              offColor="gray"
+              label="Hide Keyboard"
+              labelStyle={{ color: 'black', fontWeight: '400' }}
+              size="large"
+              onToggle={() => setShowKeyboard(!showKeyboard)}
+            />
+            <ToggleSwitch
+              isOn={isMultiplayer}
+              onColor="blue"
+              offColor="gray"
+              label="Multiplayer"
+              labelStyle={{ color: 'black', fontWeight: '400' }}
+              size="large"
+              onToggle={() => {
+                setIsMultiplayer((current) => !current);
+                refreshGame();
+              }}
+            />
+            <ToggleSwitch
+              isOn={isComputerOnly}
+              onColor="green"
+              offColor="gray"
+              label="Computer only game"
+              labelStyle={{ color: 'black', fontWeight: '400' }}
+              size="large"
+              onToggle={() => {
+                setIsComputerOnly((current) => !current);
+                setIsMultiplayer(false);
+                //refreshGame();
+              }}
+            />
+            <Button
+              className="mt-4 rounded-lg bg-green-800"
+              onPress={() => setIsComputerOnly((current) => !current)}
+            >
+              <Text className="font-bold text-white">Let Computer Play</Text>
+            </Button>
+          </View>
+        </ScrollView>
       </SafeAreaView>
     </>
   );
