@@ -21,10 +21,33 @@ const schema = z.object({
     .min(6, 'Password must be at least 6 characters'),
 });
 
+const newGameSchema = z.object({
+  name: z.string({
+    required_error: 'Username is requiered',
+  }),
+});
+
+const joinGameSchema = z.object({
+  name: z.string({
+    required_error: 'Username is requiered',
+  }),
+  id: z.string({
+    required_error: 'Game ID is requiered',
+  }),
+});
+
 export type FormType = z.infer<typeof schema>;
+export type CreateType = z.infer<typeof newGameSchema>;
+export type JoinType = z.infer<typeof joinGameSchema>;
 
 export type LoginFormProps = {
   onSubmit?: SubmitHandler<FormType>;
+};
+export type CreateFormProps = {
+  onSubmit?: SubmitHandler<CreateType>;
+};
+export type JoinFormProps = {
+  onSubmit?: SubmitHandler<JoinType>;
 };
 
 export const LoginForm = ({ onSubmit = () => {} }: LoginFormProps) => {
@@ -76,6 +99,95 @@ export const LoginForm = ({ onSubmit = () => {} }: LoginFormProps) => {
         <Button
           testID="login-button"
           label="Login"
+          onPress={handleSubmit(onSubmit)}
+        />
+      </View>
+    </KeyboardAvoidingView>
+  );
+};
+
+export const NewGameForm = ({ onSubmit = () => {} }: CreateFormProps) => {
+  const { handleSubmit, control } = useForm<CreateType>({
+    resolver: zodResolver(newGameSchema),
+  });
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior="padding"
+      keyboardVerticalOffset={10}
+    >
+      <View className="flex-1 justify-center p-4">
+        <View className="items-center justify-center">
+          <Text
+            testID="form-title"
+            className="pb-6 text-center text-4xl font-bold"
+          >
+            New Game
+          </Text>
+
+          <Text className="mb-6 max-w-xs text-center text-gray-500">
+            Create a new game
+          </Text>
+        </View>
+
+        <ControlledInput
+          testID="name"
+          control={control}
+          name="name"
+          label="Name"
+        />
+        <Button
+          testID="login-button"
+          label="Create Game"
+          onPress={handleSubmit(onSubmit)}
+        />
+      </View>
+    </KeyboardAvoidingView>
+  );
+};
+
+export const JoinGameForm = ({ onSubmit = () => {} }: JoinFormProps) => {
+  const { handleSubmit, control } = useForm<JoinType>({
+    resolver: zodResolver(joinGameSchema),
+  });
+
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior="padding"
+      keyboardVerticalOffset={10}
+    >
+      <View className="flex-1 justify-center p-4">
+        <View className="items-center justify-center">
+          <Text
+            testID="form-title"
+            className="pb-6 text-center text-4xl font-bold"
+          >
+            Join Game
+          </Text>
+
+          <Text className="mb-6 max-w-xs text-center text-gray-500">
+            Enter your name and the game code to join.
+          </Text>
+        </View>
+
+        <ControlledInput
+          testID="name"
+          control={control}
+          name="name"
+          label="Name"
+        />
+
+        <ControlledInput
+          testID="game-id"
+          control={control}
+          name="id"
+          label="Game ID"
+          placeholder="e.g. ABC123"
+        />
+        <Button
+          testID="login-button"
+          label="Join Game"
           onPress={handleSubmit(onSubmit)}
         />
       </View>

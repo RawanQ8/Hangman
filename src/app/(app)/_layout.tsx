@@ -34,6 +34,14 @@ export default function TabLayout() {
           tabBarButtonTestID: 'feed-tab',
         }}
       />
+      <Tabs.Screen
+        name="other"
+        options={{
+          title: 'Player',
+          tabBarIcon: ({ color }) => <FeedIcon color={color} />,
+          tabBarButtonTestID: 'feed-tab',
+        }}
+      />
     </Tabs>
   );
 }
