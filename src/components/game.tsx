@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Image, TextInput } from 'react-native';
 import ConfettiCannon from 'react-native-confetti-cannon';
@@ -12,8 +13,7 @@ import hangman3 from '@/../assets/hangman/hangman3.png';
 import hangman4 from '@/../assets/hangman/hangman4.png';
 import hangman5 from '@/../assets/hangman/hangman5.png';
 import hangman6 from '@/../assets/hangman/hangman6.png';
-import { socket } from '@/api/common/client';
-import { fetchWords } from '@/api/common/data';
+import { fetchWord, submitGuess } from '@/api/common/data';
 import { Button, TouchableOpacity, View } from '@/components/ui';
 import { Text } from '@/components/ui/text';
 
@@ -138,12 +138,12 @@ const DisplayWrongLetters = ({
 };
 
 // eslint-disable-next-line max-lines-per-function
-export default function Game({ gameId }) {
+export default function Game({ gameId }: { gameId: number }) {
   const [wrongGuessCount, setWrongGuessCount] = useState(0);
   const [guessedLetters, setGuessedLetters] = useState<string[]>([]);
   const [correctLetters, setCorrectLetters] = useState<string[]>([]);
   const [wrongLetters, setWrongLetters] = useState<string[]>([]);
-  const [wordToGuess, setWordToGuess] = useState('');
+  //const [wordToGuess, setWordToGuess] = useState('');
   const [isUserPlaying, setIsUserPlaying] = useState<boolean>(true);
 
   const [currentGuess, setCurrentGuess] = useState('');
@@ -154,83 +154,103 @@ export default function Game({ gameId }) {
   const [isMultiplayer, setIsMultiplayer] = useState(false);
   //const [playerCount, setPlayerCount] = useState(2);
   const [isComputerOnly, setIsComputerOnly] = useState(false);
-  const [gameState, setGameState] = useState(null);
-  const lettersToGuess = Array.from(wordToGuess);
+  const [gpId, setGpId] = useState(0);
 
   const {
-    data: wordList = [],
+    data: word = '',
     isLoading: isLoadingWords,
     error: wordsError,
-  } = useQuery<string[]>({
-    queryFn: fetchWords,
-    queryKey: ['words', 'default'],
+    refetch: refetchWord,
+  } = useQuery<string>({
+    queryFn: () => fetchWord(gameId),
+    queryKey: ['game-word', gameId],
+    enabled: Boolean(gameId),
     staleTime: 1000 * 60 * 5,
   });
 
-  const getNewWordToGuess = useCallback(async (): Promise<void> => {
-    if (wordList.length === 0) {
-      return;
-    }
-    try {
-      const randomIndex = Math.floor(Math.random() * wordList.length);
-      const newWord = wordList[randomIndex].toUpperCase();
-      setWordToGuess(newWord);
-    } catch (error) {
-      console.log('Error fetching word: ', error);
-    }
-  }, [wordList]);
+  const lettersToGuess = Array.from(word);
+
+  // const getNewWordToGuess = useCallback(async (): Promise<void> => {
+  //   if (wordList.length === 0) {
+  //     return;
+  //   }
+  //   try {
+  //     const randomIndex = Math.floor(Math.random() * wordList.length);
+  //     const newWord = wordList[randomIndex].toUpperCase();
+  //     setWordToGuess(newWord);
+  //   } catch (error) {
+  //     console.log('Error fetching word: ', error);
+  //   }
+  // }, [wordList]);
 
   const displayedLetters = lettersToGuess.map((letter) =>
     correctLetters.includes(letter) ? letter : '_'
   );
 
-  const refreshGame = () => {
+  const refreshGame = useCallback(() => {
     setIsComputerOnly(false);
     setWrongGuessCount(0);
     setWrongLetters([]);
     setGuessedLetters([]);
     setCorrectLetters([]);
-    if (gameLost || gameWon || wordToGuess === '') {
-      getNewWordToGuess();
-    } else {
-      setWordToGuess('');
-    }
     setGameWon(false);
     setGameLost(false);
-  };
+    setIsUserPlaying(true);
+    setShowConfetti(false);
+    setCurrentGuess('');
+    if (gameId) {
+      void refetchWord();
+    }
+  }, [gameId, refetchWord]);
 
   const onKeyPress = (letter: string) => {
-    if (!isUserPlaying) return;
+    if (!gameId || !isUserPlaying) return;
     if (isLoadingWords || wordsError) return;
     if (gameWon || gameLost) return;
     handleGuess(letter);
   };
 
+  const submitMove = useCallback(
+    async (letter: string) => {
+      if (!gameId) return;
+      try {
+        await submitGuess(gameId, letter);
+      } catch (err) {
+        console.error('Error submitting guess', err);
+      }
+    },
+    [gameId]
+  );
+
   const handleGuess = useCallback(
     (letter: string) => {
+      const normalizedLetter = letter.trim().toUpperCase();
+      if (!word || !normalizedLetter) return;
       let guessApplied = false;
       setGuessedLetters((prevGuessed) => {
-        if (prevGuessed.includes(letter)) return prevGuessed;
+        if (prevGuessed.includes(normalizedLetter)) return prevGuessed;
 
         guessApplied = true;
-        const isCorrect = wordToGuess.includes(letter);
+        const isCorrect = word.includes(normalizedLetter);
         if (isCorrect) {
-          setCorrectLetters((prev) => [...prev, letter]);
+          setCorrectLetters((prev) => [...prev, normalizedLetter]);
         } else {
           setWrongGuessCount((prev) => prev + 1);
-          setWrongLetters((prev) => [...prev, letter]);
+          setWrongLetters((prev) => [...prev, normalizedLetter]);
         }
 
-        return [...prevGuessed, letter];
+        return [...prevGuessed, normalizedLetter];
       });
 
       if (isMultiplayer && guessApplied) {
         setIsUserPlaying((current) => !current);
       }
 
-      makeMove(letter);
+      if (guessApplied) {
+        void submitMove(normalizedLetter);
+      }
     },
-    [isMultiplayer, wordToGuess]
+    [isMultiplayer, submitMove, word]
   );
 
   const cpuPlay = useCallback(() => {
@@ -249,11 +269,11 @@ export default function Game({ gameId }) {
     handleGuess(guess);
   }, [gameLost, gameWon, guessedLetters, handleGuess, wrongGuessCount]);
 
-  useEffect(() => {
-    if (wordList && wordList.length > 1 && wordToGuess === '') {
-      getNewWordToGuess();
-    }
-  }, [wordList, wordToGuess, getNewWordToGuess]);
+  // useEffect(() => {
+  //   if (wordList && wordList.length > 1 && wordToGuess === '') {
+  //     getNewWordToGuess();
+  //   }
+  // }, [wordList, wordToGuess, getNewWordToGuess]);
 
   useEffect(() => {
     const guessCorrect =
@@ -276,7 +296,7 @@ export default function Game({ gameId }) {
     if (wrongGuessCount >= 6 && !gameLost) {
       setGameLost(true);
     }
-  }, [wrongGuessCount, gameLost, wordToGuess]);
+  }, [wrongGuessCount, gameLost, word]);
 
   useEffect(() => {
     if (isMultiplayer) {
@@ -289,7 +309,7 @@ export default function Game({ gameId }) {
         }, 1000);
       }
     }
-  }, [isUserPlaying, isMultiplayer]);
+  }, [cpuPlay, isMultiplayer, isUserPlaying]);
 
   useEffect(() => {
     if (!isComputerOnly) return;
@@ -304,31 +324,7 @@ export default function Game({ gameId }) {
     return () => clearTimeout(timer);
   }, [cpuPlay, gameLost, gameWon, isComputerOnly, wrongGuessCount]);
 
-  useEffect(() => {
-    socket.emit('join-game', gameId);
-
-    const handleGameState = (state) => {
-      console.log('received game state:', JSON.stringify(state));
-      setGameState(state);
-    };
-
-    const handleGameUpdate = ({ gameId: id, playerId, guess }) => {
-      console.log('received game update:', id, playerId, guess);
-      // For now, you can just log or (later) call handleGuess(guess)
-    };
-
-    socket.on('game-state', handleGameState);
-    socket.on('make-move', handleGameUpdate);
-
-    return () => {
-      socket.off('game-state', handleGameState);
-      socket.off('make-move', handleGameUpdate);
-    };
-  }, [gameId]);
-
-  const makeMove = (guess) => {
-    socket.emit('make-move', { gameId, guess });
-  };
+  const router = useRouter();
 
   return (
     <View className="flex-1 items-center justify-center gap-3">
@@ -356,7 +352,7 @@ export default function Game({ gameId }) {
           <View className="flex flex-row">
             <Text className="mb-3 text-xl ">Correct Word: </Text>
             <Text className="mb-3 text-xl font-semibold text-green-800">
-              {wordToGuess}
+              {word}
             </Text>
           </View>
         </>
@@ -397,7 +393,12 @@ export default function Game({ gameId }) {
           editable={!gameWon && !gameLost && isUserPlaying}
         />
       )}
-      <Button className="mt-4 rounded-lg bg-blue-900" onPress={refreshGame}>
+      <Button
+        className="mt-4 rounded-lg bg-blue-900"
+        onPress={() => {
+          router.push('/login');
+        }}
+      >
         <Text className="text-white">
           {gameWon || gameLost ? 'New Game' : 'Start Over'}
         </Text>

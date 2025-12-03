@@ -6,7 +6,13 @@ import React, { useState } from 'react';
 import { client } from '@/api';
 import type { CreateFormProps, JoinFormProps } from '@/components/login-form';
 import { JoinGameForm, NewGameForm } from '@/components/login-form';
-import { Button, FocusAwareStatusBar, Text, View } from '@/components/ui';
+import {
+  Button,
+  FocusAwareStatusBar,
+  SafeAreaView,
+  Text,
+  View,
+} from '@/components/ui';
 import { useAuth } from '@/lib';
 
 export default function Login() {
@@ -71,7 +77,7 @@ export default function Login() {
   return (
     <>
       <FocusAwareStatusBar />
-      <View className="flex-1 p-4">
+      <SafeAreaView className="flex-1 p-4">
         <View className="mb-4 items-center">
           <Text className="text-3xl font-bold">Hangman</Text>
           <Text className="text-gray-600">
@@ -100,7 +106,7 @@ export default function Login() {
 
         {/* Legacy email/password login kept for reference */}
         {/* <LoginForm onSubmit={onSubmit} isNewGame={false} /> */}
-      </View>
+      </SafeAreaView>
     </>
   );
 }

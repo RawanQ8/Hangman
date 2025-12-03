@@ -23,7 +23,7 @@ export default function Hangman() {
       <FocusAwareStatusBar />
       <SafeAreaView className="flex-1">
         <ScrollView
-          className="scroll-m-2 px-4"
+          className="scroll-m-1 px-4"
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
         >
