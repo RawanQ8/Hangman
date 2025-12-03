@@ -15,14 +15,30 @@ export async function fetchPlayerGuess(id: number): Promise<string[]> {
   return guessArr as string[];
 }
 
-export async function submitGuess(
-  gameId: number,
-  guess: string
-): Promise<void> {
+export async function fetchUsername(id: number): Promise<string> {
+  const res = await client.get(`/player/${id}`);
+  return res.data.username as string;
+}
+
+export async function fetchTurn(gpId: number): Promise<boolean> {
+  const turnRes = await client.get(`/game/${gpId}/current-turn`);
+  return turnRes.data.isTurn as boolean;
+}
+
+export async function fetchPlayerStatus(gpId: number): Promise<string> {
+  const statusRes = await client.get(`/game/${gpId}/player-status`);
+  return statusRes.data.status;
+}
+
+export async function fetchGameStatus(gameId: number): Promise<string> {
+  const res = await client.get(`/game/${gameId}/status`);
+  return res.data.status;
+}
+
+export async function submitGuess(gpId: number, guess: string): Promise<void> {
   const normalizedGuess = guess.trim().toUpperCase();
   if (!normalizedGuess) {
     return;
   }
-
-  await client.post(`/game/${gameId}/${normalizedGuess}`);
+  await client.post(`/game/${gpId}/${normalizedGuess}`);
 }

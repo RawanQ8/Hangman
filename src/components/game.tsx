@@ -13,7 +13,14 @@ import hangman3 from '@/../assets/hangman/hangman3.png';
 import hangman4 from '@/../assets/hangman/hangman4.png';
 import hangman5 from '@/../assets/hangman/hangman5.png';
 import hangman6 from '@/../assets/hangman/hangman6.png';
-import { fetchWord, submitGuess } from '@/api/common/data';
+import {
+  fetchGameStatus,
+  fetchPlayerStatus,
+  fetchTurn,
+  fetchUsername,
+  fetchWord,
+  submitGuess,
+} from '@/api/common/data';
 import { Button, TouchableOpacity, View } from '@/components/ui';
 import { Text } from '@/components/ui/text';
 
@@ -138,11 +145,20 @@ const DisplayWrongLetters = ({
 };
 
 // eslint-disable-next-line max-lines-per-function
-export default function Game({ gameId }: { gameId: number }) {
+export default function Game({
+  gameId,
+  playerId,
+  gpId,
+}: {
+  gameId: number;
+  playerId: number;
+  gpId: number;
+}) {
   const [wrongGuessCount, setWrongGuessCount] = useState(0);
   const [guessedLetters, setGuessedLetters] = useState<string[]>([]);
   const [correctLetters, setCorrectLetters] = useState<string[]>([]);
   const [wrongLetters, setWrongLetters] = useState<string[]>([]);
+  //console.log(isCurrentTurn);
   //const [wordToGuess, setWordToGuess] = useState('');
   const [isUserPlaying, setIsUserPlaying] = useState<boolean>(true);
 
@@ -154,7 +170,7 @@ export default function Game({ gameId }: { gameId: number }) {
   const [isMultiplayer, setIsMultiplayer] = useState(false);
   //const [playerCount, setPlayerCount] = useState(2);
   const [isComputerOnly, setIsComputerOnly] = useState(false);
-  const [gpId, setGpId] = useState(0);
+  //const [gpId, setGpId] = useState(0);
 
   const {
     data: word = '',
@@ -165,6 +181,57 @@ export default function Game({ gameId }: { gameId: number }) {
     queryFn: () => fetchWord(gameId),
     queryKey: ['game-word', gameId],
     enabled: Boolean(gameId),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const {
+    data: playerStatus = '',
+    isLoading: isLoadingPlayer,
+    error: playerError,
+    refetch: refetchPlayerStatus,
+  } = useQuery<string>({
+    queryFn: () => fetchPlayerStatus(gpId),
+    queryKey: ['player-status', gpId],
+    enabled: Boolean(gpId),
+    refetchInterval: 1000,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const {
+    data: gameStatus = 'waiting',
+    isLoading: isLoadingStatus,
+    error: statusError,
+    refetch: refetchStatus,
+  } = useQuery<string>({
+    queryFn: () => fetchGameStatus(gameId),
+    queryKey: ['game-status', gameId],
+    enabled: Boolean(gameId),
+    refetchInterval: 1000,
+    staleTime: 1000 * 60,
+  });
+
+  const {
+    data: username = '',
+    isLoading: isLoadingName,
+    error: nameError,
+    refetch: refetchName,
+  } = useQuery<string>({
+    queryFn: () => fetchUsername(playerId),
+    queryKey: ['player-username', playerId],
+    enabled: Boolean(playerId),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const {
+    data: isCurrentTurn = false,
+    isLoading: isLoadingTurn,
+    error: turnsError,
+    refetch: refetchTurn,
+  } = useQuery<boolean>({
+    queryFn: () => fetchTurn(gpId),
+    queryKey: ['player-turn', gpId],
+    refetchInterval: 1000,
+    enabled: Boolean(gpId),
     staleTime: 1000 * 60 * 5,
   });
 
@@ -204,7 +271,7 @@ export default function Game({ gameId }: { gameId: number }) {
   }, [gameId, refetchWord]);
 
   const onKeyPress = (letter: string) => {
-    if (!gameId || !isUserPlaying) return;
+    if (!gameId || !isCurrentTurn || !(gameStatus === 'in_progress')) return;
     if (isLoadingWords || wordsError) return;
     if (gameWon || gameLost) return;
     handleGuess(letter);
@@ -212,14 +279,15 @@ export default function Game({ gameId }: { gameId: number }) {
 
   const submitMove = useCallback(
     async (letter: string) => {
-      if (!gameId) return;
+      if (!gpId) return;
       try {
-        await submitGuess(gameId, letter);
+        console.log(`GP ${gpId} making guess: ${letter}`);
+        await submitGuess(gpId, letter);
       } catch (err) {
         console.error('Error submitting guess', err);
       }
     },
-    [gameId]
+    [gpId]
   );
 
   const handleGuess = useCallback(
@@ -238,7 +306,6 @@ export default function Game({ gameId }: { gameId: number }) {
           setWrongGuessCount((prev) => prev + 1);
           setWrongLetters((prev) => [...prev, normalizedLetter]);
         }
-
         return [...prevGuessed, normalizedLetter];
       });
 
@@ -301,7 +368,7 @@ export default function Game({ gameId }: { gameId: number }) {
   useEffect(() => {
     if (isMultiplayer) {
       //if (!isUserPlaying) cpuPlay();
-      if (!isUserPlaying) {
+      if (!isCurrentTurn) {
         console.log('Cpu playing');
         setTimeout(() => {
           setIsUserPlaying((current) => !current);
@@ -309,7 +376,7 @@ export default function Game({ gameId }: { gameId: number }) {
         }, 1000);
       }
     }
-  }, [cpuPlay, isMultiplayer, isUserPlaying]);
+  }, [cpuPlay, isMultiplayer, isCurrentTurn]);
 
   useEffect(() => {
     if (!isComputerOnly) return;
@@ -323,6 +390,13 @@ export default function Game({ gameId }: { gameId: number }) {
     }, 1000);
     return () => clearTimeout(timer);
   }, [cpuPlay, gameLost, gameWon, isComputerOnly, wrongGuessCount]);
+
+  useEffect(() => {
+    if (gameStatus === 'won' || gameStatus === 'lost') {
+      if (playerStatus === 'is_winner') setGameWon(true);
+      setGameLost(true);
+    }
+  }, [gameStatus]);
 
   const router = useRouter();
 
@@ -339,6 +413,8 @@ export default function Game({ gameId }: { gameId: number }) {
         />
       )}
       <Text>Game ID: {gameId}</Text>
+      <Text>Player: {username}</Text>
+      <Text>GP: {gpId}</Text>
       {gameWon && (
         <Text className="mb-3 text-xl font-bold text-blue-800">
           Congratulations You Win!
@@ -374,7 +450,7 @@ export default function Game({ gameId }: { gameId: number }) {
           onKeyPress={onKeyPress}
           guessedLetters={guessedLetters}
           correctLetters={correctLetters}
-          locked={!isUserPlaying}
+          locked={!isCurrentTurn || !(gameStatus === 'in_progress')}
         />
       ) : (
         <TextInput
@@ -390,7 +466,7 @@ export default function Game({ gameId }: { gameId: number }) {
           }}
           autoFocus={true}
           autoCapitalize="characters"
-          editable={!gameWon && !gameLost && isUserPlaying}
+          editable={!gameWon && !gameLost && isCurrentTurn}
         />
       )}
       <Button

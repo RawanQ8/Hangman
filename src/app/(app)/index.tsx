@@ -7,14 +7,30 @@ import { FocusAwareStatusBar, SafeAreaView } from '@/components/ui';
 import Game from '../../components/game';
 
 export default function Hangman() {
-  const params = useLocalSearchParams<{ gameId?: string }>();
+  const params = useLocalSearchParams<{
+    gameId?: string;
+    playerId?: string;
+    gpId?: string;
+  }>();
   const [gameId, setGameId] = useState(0);
+  const [gpId, setGpId] = useState(0);
+  const [playerId, setPlayerId] = useState(0);
 
   useEffect(() => {
-    if (!params?.gameId) return;
-    const parsed = Number(params.gameId);
-    if (!Number.isNaN(parsed)) {
-      setGameId(parsed);
+    if (!params?.gameId || !params?.playerId || !params?.gpId) return;
+
+    const parsedGame = Number(params.gameId);
+    const parsedPlayer = Number(params.playerId);
+    const parsedGP = Number(params.gpId);
+
+    if (!Number.isNaN(parsedGame)) {
+      setGameId(parsedGame);
+    }
+    if (!Number.isNaN(parsedPlayer)) {
+      setPlayerId(parsedPlayer);
+    }
+    if (!Number.isNaN(parsedGP)) {
+      setGpId(parsedGP);
     }
   }, [params?.gameId]);
 
@@ -27,7 +43,7 @@ export default function Hangman() {
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
         >
-          <Game gameId={gameId} />
+          <Game gameId={gameId} playerId={playerId} gpId={gpId} />
         </ScrollView>
       </SafeAreaView>
     </>

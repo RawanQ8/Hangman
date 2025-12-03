@@ -23,13 +23,19 @@ export default function Login() {
   const onCreateNewGame: CreateFormProps['onSubmit'] = async (data) => {
     try {
       const res = await client.post('/game', { playerName: data.name });
-      const game = res.data;
+      const gamePlayer = res.data.gpId;
+      const gameId = res.data.gameId;
+      const playerId = res.data.playerId;
 
       signIn({ access: 'access-token', refresh: 'refresh-token' });
 
       router.push({
         pathname: '/(app)',
-        params: { gameId: String(game.id) },
+        params: {
+          gameId: String(gameId),
+          gpId: gamePlayer,
+          playerId: playerId,
+        },
       });
     } catch (err) {
       if (axios.isAxiosError(err)) {
@@ -39,34 +45,35 @@ export default function Login() {
           err.response?.data
         );
       }
-      console.log('Front end error creating game', err);
+      console.log('Error creating game', err);
     }
   };
 
   const onJoinGame: JoinFormProps['onSubmit'] = async (data) => {
     try {
-      console.log(data);
+      console.log('Data given: ', data);
       const res = await client.post(`/game/${data.id}`, {
         playerName: data.name,
       });
-      const game = res.data;
+      console.log('Data recieved:', res.data);
+      const gamePlayer = res.data.gpId;
+      const gameId = res.data.gameId;
+      const playerId = res.data.playerId;
 
       signIn({ access: 'access-token', refresh: 'refresh-token' });
 
       router.push({
         pathname: '/(app)',
-        params: { gameId: String(game.id) },
+        params: {
+          gameId: String(gameId),
+          gpId: gamePlayer,
+          playerId: playerId,
+        },
       });
     } catch (err) {
-      //console.log('Front end error creating game', err);
       if (axios.isAxiosError(err)) {
         console.log(
-          'create game error',
-          err.response?.status,
-          err.response?.data
-        );
-        console.log(
-          'create game error',
+          'join game error',
           err.response?.status,
           err.response?.data
         );
