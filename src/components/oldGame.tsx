@@ -1,7 +1,9 @@
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Image, TextInput } from 'react-native';
 import ConfettiCannon from 'react-native-confetti-cannon';
+import ToggleSwitch from 'toggle-switch-react-native';
 
 //import Confetti from 'react-native-confetti';
 import hangman0 from '@/../assets/hangman/hangman0.png';
@@ -11,7 +13,14 @@ import hangman3 from '@/../assets/hangman/hangman3.png';
 import hangman4 from '@/../assets/hangman/hangman4.png';
 import hangman5 from '@/../assets/hangman/hangman5.png';
 import hangman6 from '@/../assets/hangman/hangman6.png';
-import { submitGuess } from '@/api/common/data';
+import {
+  fetchGameStatus,
+  fetchPlayerStatus,
+  fetchTurn,
+  fetchUsername,
+  fetchWord,
+  submitGuess,
+} from '@/api/common/data';
 import { Button, TouchableOpacity, View } from '@/components/ui';
 import { Text } from '@/components/ui/text';
 
@@ -141,68 +150,125 @@ export default function Game({
   playerId,
   gpId,
 }: {
-  gameId: string;
-  playerId: string;
-  gpId: string;
+  gameId: number;
+  playerId: number;
+  gpId: number;
 }) {
   const [wrongGuessCount, setWrongGuessCount] = useState(0);
   const [guessedLetters, setGuessedLetters] = useState<string[]>([]);
   const [correctLetters, setCorrectLetters] = useState<string[]>([]);
   const [wrongLetters, setWrongLetters] = useState<string[]>([]);
+  //console.log(isCurrentTurn);
+  //const [wordToGuess, setWordToGuess] = useState('');
+  const [isUserPlaying, setIsUserPlaying] = useState<boolean>(true);
+
   const [currentGuess, setCurrentGuess] = useState('');
   const [showConfetti, setShowConfetti] = useState(false);
   const [showKeyboard, setShowKeyboard] = useState(true);
   const [gameWon, setGameWon] = useState(false);
   const [gameLost, setGameLost] = useState(false);
+  const [isMultiplayer, setIsMultiplayer] = useState(false);
+  //const [playerCount, setPlayerCount] = useState(2);
+  const [isComputerOnly, setIsComputerOnly] = useState(false);
+  //const [gpId, setGpId] = useState(0);
 
-  // const {
-  //   data: word = '',
-  //   isLoading: isLoadingWords,
-  //   error: wordsError,
-  //   refetch: refetchWord,
-  // } = useQuery<string>({
-  //   queryFn: () => fetchWord(gameId),
-  //   queryKey: ['game-word', gameId],
-  //   enabled: Boolean(gameId),
-  //   staleTime: 1000 * 60 * 5,
-  // });
+  const {
+    data: word = '',
+    isLoading: isLoadingWords,
+    error: wordsError,
+    refetch: refetchWord,
+  } = useQuery<string>({
+    queryFn: () => fetchWord(gameId),
+    queryKey: ['game-word', gameId],
+    enabled: Boolean(gameId),
+    staleTime: 1000 * 60 * 5,
+  });
 
-  // const { data: playerStatus = '' } = useQuery<string>({
-  //   queryFn: () => fetchPlayerStatus(gpId),
-  //   queryKey: ['player-status', gpId],
-  //   enabled: Boolean(gpId),
-  //   refetchInterval: 1000,
-  //   staleTime: 1000 * 60 * 5,
-  // });
+  const {
+    data: playerStatus = '',
+    isLoading: isLoadingPlayer,
+    error: playerError,
+    refetch: refetchPlayerStatus,
+  } = useQuery<string>({
+    queryFn: () => fetchPlayerStatus(gpId),
+    queryKey: ['player-status', gpId],
+    enabled: Boolean(gpId),
+    refetchInterval: 1000,
+    staleTime: 1000 * 60 * 5,
+  });
 
-  // const { data: gameStatus = 'waiting' } = useQuery<string>({
-  //   queryFn: () => fetchGameStatus(gameId),
-  //   queryKey: ['game-status', gameId],
-  //   enabled: Boolean(gameId),
-  //   refetchInterval: 1000,
-  //   staleTime: 1000 * 60,
-  // });
+  const {
+    data: gameStatus = 'waiting',
+    isLoading: isLoadingStatus,
+    error: statusError,
+    refetch: refetchStatus,
+  } = useQuery<string>({
+    queryFn: () => fetchGameStatus(gameId),
+    queryKey: ['game-status', gameId],
+    enabled: Boolean(gameId),
+    refetchInterval: 1000,
+    staleTime: 1000 * 60,
+  });
 
-  // const { data: username = '' } = useQuery<string>({
-  //   queryFn: () => fetchUsername(playerId),
-  //   queryKey: ['player-username', playerId],
-  //   enabled: Boolean(playerId),
-  //   staleTime: 1000 * 60 * 5,
-  // });
+  const {
+    data: username = '',
+    isLoading: isLoadingName,
+    error: nameError,
+    refetch: refetchName,
+  } = useQuery<string>({
+    queryFn: () => fetchUsername(playerId),
+    queryKey: ['player-username', playerId],
+    enabled: Boolean(playerId),
+    staleTime: 1000 * 60 * 5,
+  });
 
-  // const { data: isCurrentTurn = false } = useQuery<boolean>({
-  //   queryFn: () => fetchTurn(gpId),
-  //   queryKey: ['player-turn', gpId],
-  //   refetchInterval: 1000,
-  //   enabled: Boolean(gpId),
-  //   staleTime: 1000 * 60 * 5,
-  // });
+  const {
+    data: isCurrentTurn = false,
+    isLoading: isLoadingTurn,
+    error: turnsError,
+    refetch: refetchTurn,
+  } = useQuery<boolean>({
+    queryFn: () => fetchTurn(gpId),
+    queryKey: ['player-turn', gpId],
+    refetchInterval: 1000,
+    enabled: Boolean(gpId),
+    staleTime: 1000 * 60 * 5,
+  });
 
   const lettersToGuess = Array.from(word);
+
+  // const getNewWordToGuess = useCallback(async (): Promise<void> => {
+  //   if (wordList.length === 0) {
+  //     return;
+  //   }
+  //   try {
+  //     const randomIndex = Math.floor(Math.random() * wordList.length);
+  //     const newWord = wordList[randomIndex].toUpperCase();
+  //     setWordToGuess(newWord);
+  //   } catch (error) {
+  //     console.log('Error fetching word: ', error);
+  //   }
+  // }, [wordList]);
 
   const displayedLetters = lettersToGuess.map((letter) =>
     correctLetters.includes(letter) ? letter : '_'
   );
+
+  const refreshGame = useCallback(() => {
+    setIsComputerOnly(false);
+    setWrongGuessCount(0);
+    setWrongLetters([]);
+    setGuessedLetters([]);
+    setCorrectLetters([]);
+    setGameWon(false);
+    setGameLost(false);
+    setIsUserPlaying(true);
+    setShowConfetti(false);
+    setCurrentGuess('');
+    if (gameId) {
+      void refetchWord();
+    }
+  }, [gameId, refetchWord]);
 
   const onKeyPress = (letter: string) => {
     if (!gameId || !isCurrentTurn || !(gameStatus === 'in_progress')) return;
@@ -243,12 +309,38 @@ export default function Game({
         return [...prevGuessed, normalizedLetter];
       });
 
+      if (isMultiplayer && guessApplied) {
+        setIsUserPlaying((current) => !current);
+      }
+
       if (guessApplied) {
         void submitMove(normalizedLetter);
       }
     },
-    [submitMove, word]
+    [isMultiplayer, submitMove, word]
   );
+
+  const cpuPlay = useCallback(() => {
+    if (gameWon || gameLost || wrongGuessCount >= 6) return;
+
+    const possibleGuesses = ALPHABET.filter(
+      (letter: string) => !guessedLetters.includes(letter)
+    );
+
+    if (possibleGuesses.length === 0) return;
+
+    const guessIndex = Math.floor(Math.random() * possibleGuesses.length);
+    const guess = possibleGuesses[guessIndex];
+    setCurrentGuess(guess);
+    console.log('guess: ', guess);
+    handleGuess(guess);
+  }, [gameLost, gameWon, guessedLetters, handleGuess, wrongGuessCount]);
+
+  // useEffect(() => {
+  //   if (wordList && wordList.length > 1 && wordToGuess === '') {
+  //     getNewWordToGuess();
+  //   }
+  // }, [wordList, wordToGuess, getNewWordToGuess]);
 
   useEffect(() => {
     const guessCorrect =
@@ -272,6 +364,32 @@ export default function Game({
       setGameLost(true);
     }
   }, [wrongGuessCount, gameLost, word]);
+
+  useEffect(() => {
+    if (isMultiplayer) {
+      //if (!isUserPlaying) cpuPlay();
+      if (!isCurrentTurn) {
+        console.log('Cpu playing');
+        setTimeout(() => {
+          setIsUserPlaying((current) => !current);
+          cpuPlay();
+        }, 1000);
+      }
+    }
+  }, [cpuPlay, isMultiplayer, isCurrentTurn]);
+
+  useEffect(() => {
+    if (!isComputerOnly) return;
+    if (gameWon || gameLost || wrongGuessCount >= 6) {
+      setIsComputerOnly(false);
+      //setTimeout(refreshGame, 3500);
+      return;
+    }
+    const timer = setTimeout(() => {
+      cpuPlay();
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [cpuPlay, gameLost, gameWon, isComputerOnly, wrongGuessCount]);
 
   useEffect(() => {
     if (gameStatus === 'won' || gameStatus === 'lost') {
@@ -315,7 +433,12 @@ export default function Game({
           </View>
         </>
       )}
-
+      {isMultiplayer && (
+        <Text className="text-xl tracking-widest text-blue-800">
+          {' '}
+          Multiplayer mode
+        </Text>
+      )}
       <DisplayHangmanImage wrongGuessCount={wrongGuessCount} />
       <DisplayWrongLetters wrongGuessedLetters={wrongLetters} />
       <Text className="text-4xl font-bold tracking-widest">
@@ -355,6 +478,46 @@ export default function Game({
         <Text className="text-white">
           {gameWon || gameLost ? 'New Game' : 'Start Over'}
         </Text>
+      </Button>
+      <ToggleSwitch
+        isOn={!showKeyboard}
+        onColor="green"
+        offColor="gray"
+        label="Hide Keyboard"
+        labelStyle={{ color: 'black', fontWeight: '400' }}
+        size="large"
+        onToggle={() => setShowKeyboard(!showKeyboard)}
+      />
+      <ToggleSwitch
+        isOn={isMultiplayer}
+        onColor="blue"
+        offColor="gray"
+        label="Multiplayer"
+        labelStyle={{ color: 'black', fontWeight: '400' }}
+        size="large"
+        onToggle={() => {
+          setIsMultiplayer((current) => !current);
+          refreshGame();
+        }}
+      />
+      <ToggleSwitch
+        isOn={isComputerOnly}
+        onColor="green"
+        offColor="gray"
+        label="Computer only game"
+        labelStyle={{ color: 'black', fontWeight: '400' }}
+        size="large"
+        onToggle={() => {
+          setIsComputerOnly((current) => !current);
+          setIsMultiplayer(false);
+          //refreshGame();
+        }}
+      />
+      <Button
+        className="mt-4 rounded-lg bg-green-800"
+        onPress={() => setIsComputerOnly((current) => !current)}
+      >
+        <Text className="font-bold text-white">Let Computer Play</Text>
       </Button>
     </View>
   );

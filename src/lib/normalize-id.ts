@@ -6,8 +6,13 @@ export function normalizeId(value?: string | number | bigint | null): bigint {
   if (value === null || value === undefined) return BigInt(0);
   const trimmed = String(value).trim();
   const cleaned = trimmed.replace(/[a-zA-Z]+$/, '');
-  console.log('cleaned: ', cleaned);
-  const out = BigInt(cleaned);
-  console.log('returning: ', out);
-  return BigInt(out);
+  try {
+    console.log('cleaned: ', cleaned);
+    const out = BigInt(cleaned);
+    console.log('returning: ', out);
+    return BigInt(out);
+  } catch (err) {
+    console.error(err);
+  }
+  return BigInt(0);
 }

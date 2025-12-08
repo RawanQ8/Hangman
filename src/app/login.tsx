@@ -1,14 +1,14 @@
 /* eslint-disable max-lines-per-function */
-import axios from 'axios';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import {
-  useReducer as useStdbReducer,
-  useSpacetimeDB,
-  useTable,
-} from 'spacetimedb/react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useSpacetimeDB, useTable } from 'spacetimedb/react';
 
-import { client } from '@/api';
 import type { CreateFormProps, JoinFormProps } from '@/components/login-form';
 import { JoinGameForm, NewGameForm } from '@/components/login-form';
 import {
@@ -18,41 +18,104 @@ import {
   Text,
   View,
 } from '@/components/ui';
+import { normalizeId } from '@/lib/normalize-id';
 
 import { reducers, tables } from '../module_bindings';
 
-type PendingCreation = {
-  username: string;
-  playerSnapshot: Set<string>;
-  gameSnapshot: Set<string>;
-  playerId?: bigint;
-  gameId?: bigint;
-  requestedGamePlayer?: boolean;
+type ReducerParams = Record<string, unknown>;
+
+const toCamel = (name: string) =>
+  name.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+
+const reducersLookup = reducers as Record<string, any>;
+const tablesList = Object.values(tables as Record<string, any>);
+
+const getReducerSchema = (name: string) => {
+  const camel = toCamel(name);
+  return reducersLookup[camel] ?? reducersLookup[name];
 };
+
+function useReducerInvoker(name: string) {
+  const schema = useMemo(() => getReducerSchema(name), [name]);
+  const { getConnection, isActive } = useSpacetimeDB();
+  const queueRef = useRef<ReducerParams[]>([]);
+
+  const run = useCallback(
+    (params: ReducerParams = {}) => {
+      if (!schema) {
+        console.error(`Reducer schema not found for ${name}`);
+        return;
+      }
+      const conn = getConnection();
+      if (!conn) {
+        queueRef.current.push(params);
+        return;
+      }
+      conn.callReducerWithParams(
+        schema.name,
+        schema.paramsType,
+        params,
+        'FullUpdate'
+      );
+      console.log('In reducer with: ', name);
+    },
+    [schema, getConnection, name]
+  );
+
+  useEffect(() => {
+    if (!isActive || queueRef.current.length === 0 || !schema) {
+      return;
+    }
+    const pending = queueRef.current.splice(0);
+    for (const payload of pending) {
+      run(payload);
+    }
+  }, [isActive, run, schema]);
+
+  return run;
+}
 
 export default function Login() {
   const router = useRouter();
   //const signIn = useAuth.use.signIn();
   const [mode, setMode] = useState<'create' | 'join'>('create');
-  const [pendingCreate, setPendingCreate] = useState<PendingCreation | null>(
-    null
-  );
 
-  const { identity, isActive } = useSpacetimeDB();
+  const spacetime = useSpacetimeDB();
+  const { isActive, identity } = spacetime;
 
-  const createPlayer = useStdbReducer(reducers.createPlayer);
-  const createGame = useStdbReducer(reducers.createGame);
-  const createGamePlayer = useStdbReducer(reducers.createGamePlayer);
-  //const joinGameReducer = useStdbReducer(reducers.joinGame);
+  const connection = spacetime.getConnection?.();
+  if (connection) {
+    for (const tableDef of tablesList) {
+      const snake = tableDef.name;
+      const camel = tableDef.accessorName ?? snake;
+      if (snake === camel) continue;
+      const hasSnake = Object.prototype.hasOwnProperty.call(
+        connection.db,
+        snake
+      );
+      if (hasSnake) continue;
+      const descriptor = Object.getOwnPropertyDescriptor(connection.db, camel);
+      if (!descriptor) continue;
+      Object.defineProperty(connection.db, snake, descriptor);
+    }
+  }
 
   const [players] = useTable(tables.player);
-  console.log('players:', players);
   const [games] = useTable(tables.game);
-  console.log('games:', games);
   const [gamePlayers] = useTable(tables.gamePlayer);
+  const [responses] = useTable(tables.reducerResponse);
+
+  const createPlayer = useReducerInvoker('create_player');
+  const createGame = useReducerInvoker('create_game');
+  const createGamePlayer = useReducerInvoker('create_game_player');
+  const joinGame = useReducerInvoker('join_game');
 
   console.log('identity: ', identity);
   console.log('is active: ', isActive);
+  // console.log('players ', players);
+  // console.log('games ', games);
+  // console.log('gamePlayers ', gamePlayers);
+  //console.log('first reducer: ', responses[0]);
 
   const onCreateNewGame: CreateFormProps['onSubmit'] = async (data) => {
     if (!isActive) {
@@ -62,135 +125,102 @@ export default function Login() {
 
     const username = data.name.trim();
     console.log('username: ', username);
-    const playerSnapshot = new Set(players.map((p) => p.id.toString()));
-    const gameSnapshot = new Set(games.map((g) => g.id.toString()));
-
-    setPendingCreate({
-      username,
-      playerSnapshot,
-      gameSnapshot,
-    });
 
     createPlayer({ username });
     createGame();
-  };
 
-  useEffect(() => {
-    if (!pendingCreate) {
-      return;
-    }
+    const currentPlayer = players[players.length - 1];
+    //console.log('normalizing current player id', currentPlayer.id);
+    const currentPlayerId = normalizeId(currentPlayer.id);
+    ///console.log('cleaned player id', currentPlayerId);
 
-    let updated = pendingCreate;
+    const currentGame = games[games.length - 1];
+    //console.log('normalizing current game id', currentGame.id);
+    const currentGameId = normalizeId(currentGame.id);
+    //console.log('cleaned Game id', currentGameId);
+    //console.log('type of Game id', typeof currentGameId);
 
-    if (!pendingCreate.playerId) {
-      const newPlayer = players.find(
-        (p) =>
-          !pendingCreate.playerSnapshot.has(p.id.toString()) &&
-          p.username.toLowerCase() === pendingCreate.username.toLowerCase()
-      );
-      if (newPlayer) {
-        updated = { ...updated, playerId: BigInt(newPlayer.id) };
+    try {
+      if (Number.isNaN(currentPlayerId) || Number.isNaN(currentGameId)) {
+        throw new Error('Invalid player or game id');
       }
+      createGamePlayer({
+        playerId: currentPlayerId,
+        gameId: currentGameId,
+        isFirst: true,
+      });
+    } catch (err) {
+      console.error(err);
     }
 
-    if (!pendingCreate.gameId) {
-      const newGame = games.find(
-        (g) => !pendingCreate.gameSnapshot.has(g.id.toString())
-      );
-      if (newGame) {
-        updated = { ...updated, gameId: BigInt(newGame.id) };
-      }
-    }
+    const currentGamePlayer = gamePlayers[gamePlayers.length - 1];
+    console.log('gp: ', currentGamePlayer);
+    const gpId = currentGamePlayer.id;
+    console.log('gpId: ', gpId);
 
-    if (updated !== pendingCreate) {
-      setPendingCreate(updated);
-    }
-  }, [games, pendingCreate, players]);
-
-  useEffect(() => {
-    if (
-      !pendingCreate ||
-      pendingCreate.requestedGamePlayer ||
-      !pendingCreate.playerId ||
-      !pendingCreate.gameId
-    ) {
-      return;
-    }
-
-    createGamePlayer({
-      playerId: pendingCreate.playerId,
-      gameId: pendingCreate.gameId,
-      isFirst: true,
-    });
-
-    setPendingCreate((prev) =>
-      prev ? { ...prev, requestedGamePlayer: true } : prev
-    );
-  }, [createGamePlayer, pendingCreate]);
-
-  useEffect(() => {
-    if (
-      !pendingCreate?.requestedGamePlayer ||
-      !pendingCreate.playerId ||
-      !pendingCreate.gameId
-    ) {
-      return;
-    }
-
-    const gamePlayer = gamePlayers.find(
-      (gp) =>
-        gp.playerId === pendingCreate.playerId &&
-        gp.gameId === pendingCreate.gameId
-    );
-
-    if (!gamePlayer) {
-      return;
-    }
+    const stringifiedGameId = currentGameId.toString();
+    const stringifiedGpId = gpId.toString();
+    const stringifiedPlayerId = currentPlayerId.toString();
+    //console.log('Type of strinigified id: ', typeof stringifiedGameId);
 
     router.push({
       pathname: '/(app)',
       params: {
-        gameId: String(gamePlayer.gameId),
-        gpId: String(gamePlayer.id),
-        playerId: String(gamePlayer.playerId),
+        gameId: stringifiedGameId || '0',
+        gpId: stringifiedGpId || '0',
+        playerId: stringifiedPlayerId || '0',
       },
     });
-    setPendingCreate(null);
-  }, [gamePlayers, pendingCreate, router]);
+  };
 
   const onJoinGame: JoinFormProps['onSubmit'] = async (data) => {
+    if (!isActive) {
+      console.log('Not connected to SpacetimeDB yet');
+      return;
+    }
+
+    const username = data.name.trim();
+    console.log('username: ', username);
+    const gameId = data.id;
+    console.log('gameId: ', gameId);
+
+    createPlayer({ username });
+
+    const currentPlayer = players[players.length - 1];
+    const currentPlayerId = normalizeId(currentPlayer.id);
+
+    const currentGameId = normalizeId(gameId);
+    console.log('normalized game id: ', currentGameId);
+    joinGame({ username: username, gameId: currentGameId });
+
     try {
-      //id = Number(data.id);
-      //const game = joinGameReducer({ gameId: id, player_name: data.name });
-      console.log('Data given: ', data);
-      const res = await client.post(`/game/${data.id}`, {
-        playerName: data.name,
-      });
-
-      console.log('Data recieved:', res.data);
-      const gamePlayer = res.data.gpId;
-      const gameId = res.data.gameId;
-      const playerId = res.data.playerId;
-
-      //signIn({ access: 'access-token', refresh: 'refresh-token' });
-
-      router.push({
-        pathname: '/(app)',
-        params: {
-          gameId: String(gameId),
-          gpId: gamePlayer,
-          playerId: playerId,
-        },
+      if (Number.isNaN(currentPlayerId) || Number.isNaN(currentGameId)) {
+        console.log('throwing err');
+        throw new Error('Invalid player or game id');
+      }
+      console.log('trying to create game player');
+      createGamePlayer({
+        playerId: currentPlayerId,
+        gameId: currentGameId,
+        isFirst: false,
       });
     } catch (err) {
-      if (axios.isAxiosError(err)) {
-        console.log(
-          'join game error',
-          err.response?.status,
-          err.response?.data
-        );
-      }
+      console.error(err);
     }
+
+    const currentGamePlayer = gamePlayers[gamePlayers.length - 1];
+    console.log('gp: ', currentGamePlayer);
+    const gpId = currentGamePlayer.id;
+    console.log('gpId: ', gpId);
+
+    router.push({
+      pathname: '/(app)',
+      params: {
+        gameId: String(currentGameId) || '0',
+        gpId: String(gpId) || '0',
+        playerId: String(currentPlayerId) || '0',
+      },
+    });
   };
 
   return (
