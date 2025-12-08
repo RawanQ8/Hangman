@@ -1,8 +1,9 @@
 import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ScrollView } from 'react-native';
+import { useSpacetimeDB } from 'spacetimedb/react';
 
-import { FocusAwareStatusBar, SafeAreaView } from '@/components/ui';
+import { FocusAwareStatusBar, SafeAreaView, Text } from '@/components/ui';
 
 import Game from '../../components/game';
 
@@ -15,6 +16,8 @@ export default function Hangman() {
   const [gameId, setGameId] = useState(0);
   const [gpId, setGpId] = useState(0);
   const [playerId, setPlayerId] = useState(0);
+
+  const { isActive: connected } = useSpacetimeDB();
 
   useEffect(() => {
     if (!params?.gameId || !params?.playerId || !params?.gpId) return;
@@ -33,6 +36,10 @@ export default function Hangman() {
       setGpId(parsedGP);
     }
   }, [params?.gameId]);
+
+  if (!connected) {
+    return <Text>Connecting to SpacetimeDB...</Text>;
+  }
 
   return (
     <>
