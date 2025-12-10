@@ -7,7 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useSpacetimeDB, useTable } from 'spacetimedb/react';
+import { useSpacetimeDB } from 'spacetimedb/react';
 
 import type { CreateFormProps, JoinFormProps } from '@/components/login-form';
 import { JoinGameForm, NewGameForm } from '@/components/login-form';
@@ -18,6 +18,7 @@ import {
   Text,
   View,
 } from '@/components/ui';
+import { useLatestResponse } from '@/hooks/useLatestResponse';
 import { normalizeId } from '@/lib/normalize-id';
 
 import { reducers, tables } from '../module_bindings';
@@ -77,7 +78,6 @@ function useReducerInvoker(name: string) {
 
 export default function Login() {
   const router = useRouter();
-  //const signIn = useAuth.use.signIn();
   const [mode, setMode] = useState<'create' | 'join'>('create');
 
   const spacetime = useSpacetimeDB();
@@ -100,22 +100,21 @@ export default function Login() {
     }
   }
 
-  const [players] = useTable(tables.player);
-  const [games] = useTable(tables.game);
-  const [gamePlayers] = useTable(tables.gamePlayer);
-  const [responses] = useTable(tables.reducerResponse);
-
   const createPlayer = useReducerInvoker('create_player');
   const createGame = useReducerInvoker('create_game');
   const createGamePlayer = useReducerInvoker('create_game_player');
   const joinGame = useReducerInvoker('join_game');
+
+  const currentPlayer = useLatestResponse('create_player');
+  const currentGame = useLatestResponse('create_game');
+  const currentGamePlayer = useLatestResponse('create_game_player');
 
   console.log('identity: ', identity);
   console.log('is active: ', isActive);
   // console.log('players ', players);
   // console.log('games ', games);
   // console.log('gamePlayers ', gamePlayers);
-  //console.log('first reducer: ', responses[0]);
+  // console.log('first reducer: ', responses[0]);
 
   const onCreateNewGame: CreateFormProps['onSubmit'] = async (data) => {
     if (!isActive) {
@@ -129,51 +128,50 @@ export default function Login() {
     createPlayer({ username });
     createGame();
 
-    const currentPlayer = players[players.length - 1];
-    //console.log('normalizing current player id', currentPlayer.id);
-    const currentPlayerId = normalizeId(currentPlayer.id);
-    ///console.log('cleaned player id', currentPlayerId);
+    console.log(`Player ${currentPlayer.id} and Game ${currentGame.id}`);
 
-    const currentGame = games[games.length - 1];
-    //console.log('normalizing current game id', currentGame.id);
-    const currentGameId = normalizeId(currentGame.id);
+    // const currentPlayerId = normalizeId(currentPlayer.id);
+    // console.log('normalizing current player id', currentPlayer.id);
+    // console.log('normalized player id', currentPlayerId);
+    // //console.log('normalizing current game id', currentGame.id);
+    // const currentGameId = normalizeId(currentGame.id);
     //console.log('cleaned Game id', currentGameId);
     //console.log('type of Game id', typeof currentGameId);
 
     try {
-      if (Number.isNaN(currentPlayerId) || Number.isNaN(currentGameId)) {
+      if (Number.isNaN(currentPlayer.id) || Number.isNaN(currentGame.id)) {
         throw new Error('Invalid player or game id');
       }
       createGamePlayer({
-        playerId: currentPlayerId,
-        gameId: currentGameId,
+        playerId: currentPlayer.id,
+        gameId: currentGame.id,
         isFirst: true,
       });
     } catch (err) {
       console.error(err);
     }
 
-    const currentGamePlayer = gamePlayers[gamePlayers.length - 1];
-    console.log('gp: ', currentGamePlayer);
+    //console.log('gp: ', currentGamePlayer);
     const gpId = currentGamePlayer.id;
     console.log('gpId: ', gpId);
 
-    const stringifiedGameId = currentGameId.toString();
-    const stringifiedGpId = gpId.toString();
-    const stringifiedPlayerId = currentPlayerId.toString();
+    // const stringifiedGameId = currentGameId.toString();
+    // const stringifiedGpId = gpId.toString();
+    // const stringifiedPlayerId = currentPlayerId.toString();
     //console.log('Type of strinigified id: ', typeof stringifiedGameId);
 
     router.push({
       pathname: '/(app)',
       params: {
-        gameId: stringifiedGameId || '0',
-        gpId: stringifiedGpId || '0',
-        playerId: stringifiedPlayerId || '0',
+        gameId: currentGame.id || 0n,
+        gpId: gpId || 0n,
+        playerId: currentPlayer.id || 0n,
       },
     });
   };
 
   const onJoinGame: JoinFormProps['onSubmit'] = async (data) => {
+    console.log('joining game: ', data.id);
     if (!isActive) {
       console.log('Not connected to SpacetimeDB yet');
       return;
@@ -186,7 +184,6 @@ export default function Login() {
 
     createPlayer({ username });
 
-    const currentPlayer = players[players.length - 1];
     const currentPlayerId = normalizeId(currentPlayer.id);
 
     const currentGameId = normalizeId(gameId);
@@ -207,8 +204,6 @@ export default function Login() {
     } catch (err) {
       console.error(err);
     }
-
-    const currentGamePlayer = gamePlayers[gamePlayers.length - 1];
     console.log('gp: ', currentGamePlayer);
     const gpId = currentGamePlayer.id;
     console.log('gpId: ', gpId);
