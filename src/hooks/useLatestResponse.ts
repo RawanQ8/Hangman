@@ -1,5 +1,6 @@
 /* eslint-disable unicorn/filename-case */
-import { useSpacetimeDB, useTable } from 'spacetimedb/react';
+import { useEffect, useRef, useState } from 'react';
+import { useTable } from 'spacetimedb/react';
 
 import { tables } from '@/module_bindings';
 
@@ -10,34 +11,45 @@ import { type Player } from '../module_bindings/player_type';
 export function useLatestResponse<T = Game | GamePlayer | Player>(
   reducerName: string
 ): T | null {
-  const { identity } = useSpacetimeDB();
   const [responses] = useTable(tables.reducerResponse);
+  const lastSeenIdRef = useRef<bigint | null>(null);
+  const lastReducerRef = useRef<string | null>(null);
+  const [latestPayload, setLatestPayload] = useState<T | null>(null);
 
-  if (!identity) return null;
+  useEffect(() => {
+    if (lastReducerRef.current !== reducerName) {
+      lastSeenIdRef.current = null;
+      lastReducerRef.current = reducerName;
+    }
 
-  // Scan once for the newest row for this identity/reducer (avoid ordering issues)
-  const myIdentity = identity.toHexString();
-  const latest = responses.reduce<(typeof responses)[number] | undefined>(
-    (latestSoFar, row) => {
-      if (
-        row.identity.toHexString() !== myIdentity ||
-        row.reducer !== reducerName
-      ) {
-        return latestSoFar;
+    let newestRowId: bigint | null = null;
+    let newestPayload: T | null = null;
+
+    for (const row of responses) {
+      if (row.reducer !== reducerName) {
+        continue;
       }
-      if (!latestSoFar || row.id > latestSoFar.id) {
-        return row;
+
+      if (lastSeenIdRef.current !== null && row.id <= lastSeenIdRef.current) {
+        continue; // already handled or stale
       }
-      return latestSoFar;
-    },
-    undefined
-  );
+      if (newestRowId === null || row.id > newestRowId) {
+        try {
+          newestPayload = JSON.parse(row.payload) as T;
+          newestRowId = row.id;
+        } catch (err) {
+          // ignore parse errors, keep looking
+          console.log('error found: ', err);
+        }
+      }
+    }
 
-  if (!latest) return null;
+    if (newestRowId !== null && newestPayload !== null) {
+      lastSeenIdRef.current = newestRowId;
+      setLatestPayload(newestPayload);
+    }
+  }, [reducerName, responses]);
 
-  try {
-    return JSON.parse(latest?.payload) as T;
-  } catch {
-    return null;
-  }
+  console.log(`Latest ${reducerName}: ${latestPayload?.id}`);
+  return latestPayload;
 }

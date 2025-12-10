@@ -1,21 +1,27 @@
+/* eslint-disable unused-imports/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Image, TextInput } from 'react-native';
 import ConfettiCannon from 'react-native-confetti-cannon';
+import { useSpacetimeDB, useTable } from 'spacetimedb/react';
 
-//import Confetti from 'react-native-confetti';
-import hangman0 from '@/../assets/hangman/hangman0.png';
-import hangman1 from '@/../assets/hangman/hangman1.png';
-import hangman2 from '@/../assets/hangman/hangman2.png';
-import hangman3 from '@/../assets/hangman/hangman3.png';
-import hangman4 from '@/../assets/hangman/hangman4.png';
-import hangman5 from '@/../assets/hangman/hangman5.png';
-import hangman6 from '@/../assets/hangman/hangman6.png';
-import { submitGuess } from '@/api/common/data';
-import { Button, TouchableOpacity, View } from '@/components/ui';
-import { Text } from '@/components/ui/text';
+import { Button, Text, TouchableOpacity, View } from '@/components/ui';
+import { reducers, tables } from '@/module_bindings';
 
-const ALPHABET = 'QWERTYUIOPASDFGHJKLZXCVBNM'.split('').sort();
+import hangman0 from '../../assets/hangman/hangman0.png';
+import hangman1 from '../../assets/hangman/hangman1.png';
+import hangman2 from '../../assets/hangman/hangman2.png';
+import hangman3 from '../../assets/hangman/hangman3.png';
+import hangman4 from '../../assets/hangman/hangman4.png';
+import hangman5 from '../../assets/hangman/hangman5.png';
+import hangman6 from '../../assets/hangman/hangman6.png';
 
 const KeyboardKey = ({
   letter,
@@ -135,15 +141,68 @@ const DisplayWrongLetters = ({
   );
 };
 
+type ReducerParams = Record<string, unknown>;
+
+const toCamel = (name: string) =>
+  name.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+
+const reducersLookup = reducers as Record<string, any>;
+const tablesList = Object.values(tables as Record<string, any>);
+
+const getReducerSchema = (name: string) => {
+  const camel = toCamel(name);
+  return reducersLookup[camel] ?? reducersLookup[name];
+};
+
+function useReducerInvoker(name: string) {
+  const schema = useMemo(() => getReducerSchema(name), [name]);
+  const { getConnection, isActive } = useSpacetimeDB();
+  const queueRef = useRef<ReducerParams[]>([]);
+
+  const run = useCallback(
+    (params: ReducerParams = {}) => {
+      if (!schema) {
+        console.error(`Reducer schema not found for ${name}`);
+        return;
+      }
+      const conn = getConnection();
+      if (!conn) {
+        queueRef.current.push(params);
+        return;
+      }
+      conn.callReducerWithParams(
+        schema.name,
+        schema.paramsType,
+        params,
+        'FullUpdate'
+      );
+      console.log('In reducer with: ', name);
+    },
+    [schema, getConnection, name]
+  );
+
+  useEffect(() => {
+    if (!isActive || queueRef.current.length === 0 || !schema) {
+      return;
+    }
+    const pending = queueRef.current.splice(0);
+    for (const payload of pending) {
+      run(payload);
+    }
+  }, [isActive, run, schema]);
+
+  return run;
+}
+
 // eslint-disable-next-line max-lines-per-function
 export default function Game({
   gameId,
   playerId,
   gpId,
 }: {
-  gameId: string;
-  playerId: string;
-  gpId: string;
+  gameId: bigint;
+  playerId: bigint;
+  gpId: bigint;
 }) {
   const [wrongGuessCount, setWrongGuessCount] = useState(0);
   const [guessedLetters, setGuessedLetters] = useState<string[]>([]);
@@ -154,49 +213,88 @@ export default function Game({
   const [showKeyboard, setShowKeyboard] = useState(true);
   const [gameWon, setGameWon] = useState(false);
   const [gameLost, setGameLost] = useState(false);
+  const [derivedIds, setDerivedIds] = useState<{
+    gameId?: bigint;
+    playerId?: bigint;
+    gamePlayerId?: bigint;
+  }>({});
 
-  // const {
-  //   data: word = '',
-  //   isLoading: isLoadingWords,
-  //   error: wordsError,
-  //   refetch: refetchWord,
-  // } = useQuery<string>({
-  //   queryFn: () => fetchWord(gameId),
-  //   queryKey: ['game-word', gameId],
-  //   enabled: Boolean(gameId),
-  //   staleTime: 1000 * 60 * 5,
-  // });
+  // if (!gameId) {
+  //   gameId = 0n;
+  //   playerId = 0n;
+  //   gpId = 0n;
+  // }
+  console.log('in game:', gameId, playerId, gpId);
 
-  // const { data: playerStatus = '' } = useQuery<string>({
-  //   queryFn: () => fetchPlayerStatus(gpId),
-  //   queryKey: ['player-status', gpId],
-  //   enabled: Boolean(gpId),
-  //   refetchInterval: 1000,
-  //   staleTime: 1000 * 60 * 5,
-  // });
+  const resolvedGameId = gameId ?? derivedIds.gameId;
+  const resolvedPlayerId = playerId ?? derivedIds.playerId;
+  const resolvedGamePlayerId = gpId ?? derivedIds.gamePlayerId;
 
-  // const { data: gameStatus = 'waiting' } = useQuery<string>({
-  //   queryFn: () => fetchGameStatus(gameId),
-  //   queryKey: ['game-status', gameId],
-  //   enabled: Boolean(gameId),
-  //   refetchInterval: 1000,
-  //   staleTime: 1000 * 60,
-  // });
+  const spacetime = useSpacetimeDB();
+  //const { isActive, identity } = spacetime;
 
-  // const { data: username = '' } = useQuery<string>({
-  //   queryFn: () => fetchUsername(playerId),
-  //   queryKey: ['player-username', playerId],
-  //   enabled: Boolean(playerId),
-  //   staleTime: 1000 * 60 * 5,
-  // });
+  const connection = spacetime.getConnection?.();
+  if (connection) {
+    for (const tableDef of tablesList) {
+      const snake = tableDef.name;
+      const camel = tableDef.accessorName ?? snake;
+      if (snake === camel) continue;
+      const hasSnake = Object.prototype.hasOwnProperty.call(
+        connection.db,
+        snake
+      );
+      if (hasSnake) continue;
+      const descriptor = Object.getOwnPropertyDescriptor(connection.db, camel);
+      if (!descriptor) continue;
+      Object.defineProperty(connection.db, snake, descriptor);
+    }
+  }
 
-  // const { data: isCurrentTurn = false } = useQuery<boolean>({
-  //   queryFn: () => fetchTurn(gpId),
-  //   queryKey: ['player-turn', gpId],
-  //   refetchInterval: 1000,
-  //   enabled: Boolean(gpId),
-  //   staleTime: 1000 * 60 * 5,
-  // });
+  const [players] = useTable(tables.player);
+  const [games] = useTable(tables.game);
+  const [gamePlayers] = useTable(tables.gamePlayer);
+  const [responses] = useTable(tables.reducerResponse);
+  const [guesses] = useTable(tables.guess);
+
+  const currentGame = useMemo(() => {
+    if (gameId) {
+      return games.find((g) => g.id === gameId);
+    }
+    return games.find((g) => g.status !== 'won' && g.status !== 'lost');
+  }, [games, gameId]);
+
+  const currentPlayer = useMemo(() => {
+    if (playerId) {
+      console.log('looking for player id: ', playerId);
+      const out = players.find((p) => p.id === playerId);
+      console.log('output of player search: ', out);
+      return out;
+    }
+  }, [players, playerId]);
+
+  console.log('current player object is: ', currentPlayer);
+
+  const currentGamePlayer = useMemo(() => {
+    if (resolvedGamePlayerId) {
+      return gamePlayers.find((gp) => gp.id === resolvedGamePlayerId);
+    }
+  }, [gamePlayers, resolvedGamePlayerId]);
+
+  const word = currentGame?.word || '';
+  console.log('word is: ', word);
+  const username = currentPlayer?.username || '';
+
+  const isCurrentTurn = currentGamePlayer?.isCurrentTurn;
+
+  //const getPlayerStatus = useReducerInvoker('get_player_status');
+  //const getGameStatus = useReducerInvoker('get_game_status');
+
+  const gameStatus = currentGame?.status;
+  // const playerStatus = useMemo(() => {
+  //   getPlayerStatus({ gpId });
+  // }, [gamePlayers, gpId]);
+  console.log('game status is: ', gameStatus);
+  //console.log('player status is: ', playerStatus);
 
   const lettersToGuess = Array.from(word);
 
@@ -206,7 +304,6 @@ export default function Game({
 
   const onKeyPress = (letter: string) => {
     if (!gameId || !isCurrentTurn || !(gameStatus === 'in_progress')) return;
-    if (isLoadingWords || wordsError) return;
     if (gameWon || gameLost) return;
     handleGuess(letter);
   };
@@ -216,7 +313,7 @@ export default function Game({
       if (!gpId) return;
       try {
         console.log(`GP ${gpId} making guess: ${letter}`);
-        await submitGuess(gpId, letter);
+        //await submitGuess(gpId, letter);
       } catch (err) {
         console.error('Error submitting guess', err);
       }
@@ -271,14 +368,17 @@ export default function Game({
     if (wrongGuessCount >= 6 && !gameLost) {
       setGameLost(true);
     }
-  }, [wrongGuessCount, gameLost, word]);
+  }, [wrongGuessCount, gameLost]);
 
   useEffect(() => {
     if (gameStatus === 'won' || gameStatus === 'lost') {
-      if (playerStatus === 'is_winner') setGameWon(true);
+      if (currentGamePlayer?.isWinner) {
+        setGameWon(true);
+        return;
+      }
       setGameLost(true);
     }
-  }, [gameStatus]);
+  }, [currentGamePlayer?.isWinner, gameStatus]);
 
   const router = useRouter();
 
@@ -296,7 +396,7 @@ export default function Game({
       )}
       <Text>Game ID: {gameId}</Text>
       <Text>Player: {username}</Text>
-      <Text>GP: {gpId}</Text>
+      {/* <Text>GP: {gpId}</Text> */}
       {gameWon && (
         <Text className="mb-3 text-xl font-bold text-blue-800">
           Congratulations You Win!
@@ -349,7 +449,7 @@ export default function Game({
       <Button
         className="mt-4 rounded-lg bg-blue-900"
         onPress={() => {
-          router.push('/login');
+          router.push('/(app)');
         }}
       >
         <Text className="text-white">

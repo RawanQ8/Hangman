@@ -1,71 +1,310 @@
-import { useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ScrollView } from 'react-native';
+/* eslint-disable max-lines-per-function */
+import { useRouter } from 'expo-router';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
 
-import { FocusAwareStatusBar, SafeAreaView, Text } from '@/components/ui';
+import type { CreateFormProps, JoinFormProps } from '@/components/login-form';
+import { JoinGameForm, NewGameForm } from '@/components/login-form';
+import {
+  Button,
+  FocusAwareStatusBar,
+  SafeAreaView,
+  Text,
+  View,
+} from '@/components/ui';
+import { useLatestResponse } from '@/hooks/useLatestResponse';
 import { normalizeId } from '@/lib/normalize-id';
 
-import Game from '../../components/game';
+import { reducers, tables } from '../../module_bindings';
 
-export default function Hangman() {
-  const params = useLocalSearchParams<{
-    gameId?: string;
-    playerId?: string;
-    gpId?: string;
-  }>();
-  const [gameId, setGameId] = useState(0);
-  const [gpId, setGpId] = useState(0);
-  const [playerId, setPlayerId] = useState(0);
-  const [renderKey, setRenderKey] = useState(0);
+type ReducerParams = Record<string, unknown>;
 
-  const { isActive: connected } = useSpacetimeDB();
+const toCamel = (name: string) =>
+  name.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+
+const reducersLookup = reducers as Record<string, any>;
+const tablesList = Object.values(tables as Record<string, any>);
+
+const getReducerSchema = (name: string) => {
+  const camel = toCamel(name);
+  return reducersLookup[camel] ?? reducersLookup[name];
+};
+
+function useReducerInvoker(name: string) {
+  const schema = useMemo(() => getReducerSchema(name), [name]);
+  const { getConnection, isActive } = useSpacetimeDB();
+  const queueRef = useRef<ReducerParams[]>([]);
+
+  const run = useCallback(
+    (params: ReducerParams = {}) => {
+      if (!schema) {
+        console.error(`Reducer schema not found for ${name}`);
+        return;
+      }
+      const conn = getConnection();
+      if (!conn) {
+        queueRef.current.push(params);
+        return;
+      }
+      conn.callReducerWithParams(
+        schema.name,
+        schema.paramsType,
+        params,
+        'FullUpdate'
+      );
+      console.log('In reducer with: ', name);
+    },
+    [schema, getConnection, name]
+  );
 
   useEffect(() => {
-    if (!params?.gameId || !params?.playerId || !params?.gpId) return;
+    if (!isActive || queueRef.current.length === 0 || !schema) {
+      return;
+    }
+    const pending = queueRef.current.splice(0);
+    for (const payload of pending) {
+      run(payload);
+    }
+  }, [isActive, run, schema]);
 
-    const parsedGame = normalizeId(params.gameId);
-    const parsedPlayer = normalizeId(params.playerId);
-    const parsedGP = normalizeId(params.gpId);
+  return run;
+}
 
-    if (!Number.isNaN(parsedGame)) {
-      setGameId(parsedGame);
+export default function Login() {
+  const router = useRouter();
+  const [mode, setMode] = useState<'create' | 'join'>('create');
+  const [allFetched, setAllFetched] = useState(false);
+  const spacetime = useSpacetimeDB();
+  const { isActive, identity } = spacetime;
+
+  const connection = spacetime.getConnection?.();
+  if (connection) {
+    for (const tableDef of tablesList) {
+      const snake = tableDef.name;
+      const camel = tableDef.accessorName ?? snake;
+      if (snake === camel) continue;
+      const hasSnake = Object.prototype.hasOwnProperty.call(
+        connection.db,
+        snake
+      );
+      if (hasSnake) continue;
+      const descriptor = Object.getOwnPropertyDescriptor(connection.db, camel);
+      if (!descriptor) continue;
+      Object.defineProperty(connection.db, snake, descriptor);
     }
-    if (!Number.isNaN(parsedPlayer)) {
-      setPlayerId(parsedPlayer);
-    }
-    if (!Number.isNaN(parsedGP)) {
-      setGpId(parsedGP);
-    }
-  }, [params?.gameId]);
+  }
+
+  const createPlayer = useReducerInvoker('create_player');
+  const createGame = useReducerInvoker('create_game');
+  const createGamePlayer = useReducerInvoker('create_game_player');
+  const joinGame = useReducerInvoker('join_game');
+
+  const currentPlayer = useLatestResponse('create_player');
+  const currentGame = useLatestResponse('create_game');
+  const currentGamePlayer = useLatestResponse('create_game_player');
+
+  let currentPlayerId = null;
+  let currentGameId = null;
+
+  if (currentPlayer) {
+    currentPlayerId = normalizeId(currentPlayer.id);
+    console.log('created player id');
+  }
+  if (currentGame) {
+    currentGameId = normalizeId(currentGame.id);
+  }
+
+  console.log('identity: ', identity);
+  console.log('is active: ', isActive);
+  console.log('current player ', currentPlayer);
+  console.log('current game ', currentGame);
+  console.log('current game player ', currentGamePlayer);
+
+  if (currentGame && currentGamePlayer && currentPlayer) {
+    console.log('fetched all info!');
+  }
 
   useEffect(() => {
-    // Force re-render when connection state changes
-    setRenderKey((k) => k + 1);
-    console.log('in use effect: ', renderKey);
-    console.log(connected);
-  }, [connected]);
+    if (currentPlayer && currentGame) {
+      createGamePlayer({
+        playerId: currentPlayerId,
+        gameId: currentGameId,
+        isFirst: true,
+      });
+    }
+  }, [
+    currentPlayer,
+    currentGameId,
+    currentGame,
+    createGamePlayer,
+    currentPlayerId,
+  ]);
+
+  useEffect(() => {
+    if (currentGame && currentGamePlayer && currentPlayer) {
+      console.log('fetched all data successfully');
+      setAllFetched(true);
+      const gpId = currentGamePlayer.id;
+
+      router.push({
+        pathname: '/(app)/home',
+        params: {
+          gameId: currentGame.id || 0n,
+          gpId: gpId || 0n,
+          playerId: currentPlayer.id || 0n,
+        },
+      });
+    }
+  }, [allFetched, currentGame, currentGamePlayer, currentPlayer, router]);
+
+  const onCreateNewGame: CreateFormProps['onSubmit'] = async (data) => {
+    if (!isActive) {
+      console.log('Not connected to SpacetimeDB yet');
+      return;
+    }
+
+    const username = data.name.trim();
+    console.log('username: ', username);
+
+    // const player = await createPlayer({ username });
+    // const game = await createGame();
+    // console.log(`Player object ${player} and game object ${game} created`);
+
+    createPlayer({ username });
+    createGame();
+
+    console.log('done creating player and game');
+    console.log('newest player: ', currentPlayer);
+
+    //console.log('cleaned Game id', currentGameId);
+    //console.log('type of Game id', typeof currentGameId);
+
+    console.log(`Player: ${currentPlayerId} and Game ${currentGameId}`);
+
+    // try {
+    //   console.log(`trying with: ${currentPlayerId} and ${currentGameId} `);
+    //   if (Number.isNaN(currentPlayerId) || Number.isNaN(currentGameId)) {
+    //     console.log('throw');
+    //     throw new Error('Invalid player or game id');
+    //   }
+    //   console.log('in try');
+    //   createGamePlayer({
+    //     playerId: currentPlayerId,
+    //     gameId: currentGameId,
+    //     isFirst: true,
+    //   });
+    //   console.log('created game');
+    // } catch (err) {
+    //   console.error(err);
+    // }
+
+    //console.log('gp: ', currentGamePlayer);
+    const gpId = currentGamePlayer.id;
+    console.log('gpId: ', gpId);
+
+    // const stringifiedGameId = currentGameId.toString();
+    // const stringifiedGpId = gpId.toString();
+    // const stringifiedPlayerId = currentPlayerId.toString();
+    //console.log('Type of strinigified id: ', typeof stringifiedGameId);
+
+    router.push({
+      pathname: '/(app)/home',
+      params: {
+        gameId: currentGame.id || 0n,
+        gpId: gpId || 0n,
+        playerId: currentPlayer.id || 0n,
+      },
+    });
+  };
+
+  const onJoinGame: JoinFormProps['onSubmit'] = async (data) => {
+    if (!isActive) {
+      console.log('Not connected to SpacetimeDB yet');
+      return;
+    }
+
+    const username = data.name.trim();
+    console.log('username: ', username);
+    const gameId = data.id;
+    console.log('gameId: ', gameId);
+
+    createPlayer({ username });
+
+    const currentPlayerId = normalizeId(currentPlayer.id);
+
+    const currentGameId = normalizeId(gameId);
+    console.log('normalized game id: ', currentGameId);
+    joinGame({ username: username, gameId: currentGameId });
+
+    try {
+      if (!currentPlayerId || !currentGameId) {
+        console.log('throwing err');
+        throw new Error('Invalid player or game id');
+      }
+      console.log('trying to create game player');
+      createGamePlayer({
+        playerId: currentPlayerId,
+        gameId: currentGameId,
+        isFirst: false,
+      });
+    } catch (err) {
+      console.error(err);
+    }
+    console.log('gp: ', currentGamePlayer);
+    const gpId = currentGamePlayer.id;
+    console.log('gpId: ', gpId);
+
+    if (currentGame && currentGamePlayer && currentPlayer) {
+      console.log('fetched all data successfully');
+    }
+    router.push({
+      pathname: '/(app)',
+      params: {
+        gameId: String(currentGameId) || '0',
+        gpId: String(gpId) || '0',
+        playerId: String(currentPlayerId) || '0',
+      },
+    });
+  };
 
   return (
     <>
       <FocusAwareStatusBar />
-      <SafeAreaView className="flex-1">
-        <ScrollView
-          className="scroll-m-1 px-4"
-          contentContainerStyle={{ flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled"
-        >
-          {connected ? (
-            <Game
-              key={renderKey}
-              gameId={gameId}
-              playerId={playerId}
-              gpId={gpId}
-            />
-          ) : (
-            <Text className="bg-emerald-400">Connecting to SpacetimeDB...</Text>
-          )}
-        </ScrollView>
+      <SafeAreaView className="flex-1 p-4">
+        <View className="mb-4 items-center">
+          <Text className="text-3xl font-bold">Hangman</Text>
+          <Text className="text-gray-600">
+            Create a game or join an existing one.
+          </Text>
+        </View>
+
+        <View className="mb-4 flex-row justify-center gap-3">
+          <Button
+            className={`flex-1 ${mode === 'create' ? 'bg-blue-900' : 'bg-gray-400'}`}
+            label="Create Game"
+            onPress={() => setMode('create')}
+          />
+          <Button
+            className={`flex-1 ${mode === 'join' ? 'bg-blue-900' : 'bg-gray-400'}`}
+            label="Join Game"
+            onPress={() => setMode('join')}
+          />
+        </View>
+
+        {mode === 'create' ? (
+          <NewGameForm onSubmit={onCreateNewGame} />
+        ) : (
+          <JoinGameForm onSubmit={onJoinGame} />
+        )}
+
+        {/* Legacy email/password login kept for reference */}
+        {/* <LoginForm onSubmit={onSubmit} isNewGame={false} /> */}
       </SafeAreaView>
     </>
   );

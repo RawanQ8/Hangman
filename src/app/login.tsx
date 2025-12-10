@@ -125,26 +125,31 @@ export default function Login() {
     const username = data.name.trim();
     console.log('username: ', username);
 
-    createPlayer({ username });
-    createGame();
+    // const player = await createPlayer({ username });
+    // const game = await createGame();
+    // console.log(`Player object ${player} and game object ${game} created`);
 
-    console.log(`Player ${currentPlayer.id} and Game ${currentGame.id}`);
+    await createPlayer({ username });
+    await createGame();
 
-    // const currentPlayerId = normalizeId(currentPlayer.id);
-    // console.log('normalizing current player id', currentPlayer.id);
-    // console.log('normalized player id', currentPlayerId);
-    // //console.log('normalizing current game id', currentGame.id);
-    // const currentGameId = normalizeId(currentGame.id);
+    console.log('done creating player and game');
+    console.log('newest player 2: ', currentPlayer);
+    const currentPlayerId = normalizeId(currentPlayer.id);
+    console.log('created player id');
+    const currentGameId = normalizeId(currentGame.id);
+
     //console.log('cleaned Game id', currentGameId);
     //console.log('type of Game id', typeof currentGameId);
 
+    console.log(`Player: ${currentPlayerId} and Game ${currentGameId}`);
+
     try {
-      if (Number.isNaN(currentPlayer.id) || Number.isNaN(currentGame.id)) {
+      if (Number.isNaN(currentPlayerId) || Number.isNaN(currentGameId)) {
         throw new Error('Invalid player or game id');
       }
       createGamePlayer({
-        playerId: currentPlayer.id,
-        gameId: currentGame.id,
+        playerId: currentPlayerId,
+        gameId: currentGameId,
         isFirst: true,
       });
     } catch (err) {
@@ -171,7 +176,6 @@ export default function Login() {
   };
 
   const onJoinGame: JoinFormProps['onSubmit'] = async (data) => {
-    console.log('joining game: ', data.id);
     if (!isActive) {
       console.log('Not connected to SpacetimeDB yet');
       return;
