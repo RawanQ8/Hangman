@@ -80,6 +80,9 @@ export default function Login() {
   const router = useRouter();
   const [mode, setMode] = useState<'create' | 'join'>('create');
   const [allFetched, setAllFetched] = useState(false);
+  const [pendingCreate, setPendingCreate] = useState(false);
+  const [pendingJoin, setPendingJoin] = useState(false);
+  const [targetGameId, setTargetGameId] = useState<bigint | null>(null);
   const spacetime = useSpacetimeDB();
   const { isActive, identity } = spacetime;
 
@@ -131,19 +134,21 @@ export default function Login() {
   }
 
   useEffect(() => {
-    if (currentPlayer && currentGame) {
-      createGamePlayer({
-        playerId: currentPlayerId,
-        gameId: currentGameId,
-        isFirst: true,
-      });
-    }
+    if (!pendingCreate) return;
+    if (!currentPlayer || !currentGame) return;
+
+    createGamePlayer({
+      playerId: currentPlayerId,
+      gameId: currentGameId,
+      isFirst: true,
+    });
   }, [
     currentPlayer,
     currentGameId,
     currentGame,
     createGamePlayer,
     currentPlayerId,
+    pendingCreate,
   ]);
 
   useEffect(() => {
@@ -151,76 +156,61 @@ export default function Login() {
       console.log('fetched all data successfully');
       setAllFetched(true);
       const gpId = currentGamePlayer.id;
+      console.log('gpId: ', gpId);
 
-      router.push({
-        pathname: '/(app)/home',
-        params: {
-          gameId: currentGame.id || 0n,
-          gpId: gpId || 0n,
-          playerId: currentPlayer.id || 0n,
-        },
-      });
+      if (pendingCreate && currentGame) {
+        console.log('creating game');
+        router.push({
+          pathname: '/(app)/home',
+          params: {
+            gameId: currentGame.id || 0n,
+            gpId: gpId || 0n,
+            playerId: currentPlayer.id || 0n,
+          },
+        });
+        setPendingCreate(false);
+      }
+
+      if (pendingJoin && targetGameId) {
+        console.log('joining game');
+        router.push({
+          pathname: '/(app)/home',
+          params: {
+            gameId: Number(targetGameId) || 0,
+            gpId: gpId || 0n,
+            playerId: currentPlayer.id || 0n,
+          },
+        });
+        setPendingJoin(false);
+      }
     }
-  }, [allFetched, currentGame, currentGamePlayer, currentPlayer, router]);
+  }, [
+    allFetched,
+    currentGame,
+    currentGamePlayer,
+    currentPlayer,
+    pendingCreate,
+    pendingJoin,
+    router,
+    targetGameId,
+  ]);
 
   const onCreateNewGame: CreateFormProps['onSubmit'] = async (data) => {
     if (!isActive) {
       console.log('Not connected to SpacetimeDB yet');
       return;
     }
+    setPendingCreate(true);
+    setPendingJoin(false);
 
     const username = data.name.trim();
     console.log('username: ', username);
-
-    // const player = await createPlayer({ username });
-    // const game = await createGame();
-    // console.log(`Player object ${player} and game object ${game} created`);
 
     createPlayer({ username });
     createGame();
 
     console.log('done creating player and game');
     console.log('newest player: ', currentPlayer);
-
-    //console.log('cleaned Game id', currentGameId);
-    //console.log('type of Game id', typeof currentGameId);
-
-    console.log(`Player: ${currentPlayerId} and Game ${currentGameId}`);
-
-    // try {
-    //   console.log(`trying with: ${currentPlayerId} and ${currentGameId} `);
-    //   if (Number.isNaN(currentPlayerId) || Number.isNaN(currentGameId)) {
-    //     console.log('throw');
-    //     throw new Error('Invalid player or game id');
-    //   }
-    //   console.log('in try');
-    //   createGamePlayer({
-    //     playerId: currentPlayerId,
-    //     gameId: currentGameId,
-    //     isFirst: true,
-    //   });
-    //   console.log('created game');
-    // } catch (err) {
-    //   console.error(err);
-    // }
-
-    //console.log('gp: ', currentGamePlayer);
-    const gpId = currentGamePlayer.id;
-    console.log('gpId: ', gpId);
-
-    // const stringifiedGameId = currentGameId.toString();
-    // const stringifiedGpId = gpId.toString();
-    // const stringifiedPlayerId = currentPlayerId.toString();
-    //console.log('Type of strinigified id: ', typeof stringifiedGameId);
-
-    router.push({
-      pathname: '/(app)/home',
-      params: {
-        gameId: currentGame.id || 0n,
-        gpId: gpId || 0n,
-        playerId: currentPlayer.id || 0n,
-      },
-    });
   };
 
   const onJoinGame: JoinFormProps['onSubmit'] = async (data) => {
@@ -228,49 +218,17 @@ export default function Login() {
       console.log('Not connected to SpacetimeDB yet');
       return;
     }
-
     const username = data.name.trim();
+    const gameId = BigInt(data.id);
+    setPendingJoin(true);
+    setPendingCreate(false);
+    setTargetGameId(gameId);
     console.log('username: ', username);
-    const gameId = data.id;
-    console.log('gameId: ', gameId);
 
     createPlayer({ username });
+    console.log('newest player: ', currentPlayer);
 
-    const currentPlayerId = normalizeId(currentPlayer.id);
-
-    const currentGameId = normalizeId(gameId);
-    console.log('normalized game id: ', currentGameId);
-    joinGame({ username: username, gameId: currentGameId });
-
-    try {
-      if (!currentPlayerId || !currentGameId) {
-        console.log('throwing err');
-        throw new Error('Invalid player or game id');
-      }
-      console.log('trying to create game player');
-      createGamePlayer({
-        playerId: currentPlayerId,
-        gameId: currentGameId,
-        isFirst: false,
-      });
-    } catch (err) {
-      console.error(err);
-    }
-    console.log('gp: ', currentGamePlayer);
-    const gpId = currentGamePlayer.id;
-    console.log('gpId: ', gpId);
-
-    if (currentGame && currentGamePlayer && currentPlayer) {
-      console.log('fetched all data successfully');
-    }
-    router.push({
-      pathname: '/(app)',
-      params: {
-        gameId: String(currentGameId) || '0',
-        gpId: String(gpId) || '0',
-        playerId: String(currentPlayerId) || '0',
-      },
-    });
+    joinGame({ username, gameId });
   };
 
   return (
