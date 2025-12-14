@@ -141,6 +141,18 @@ const DisplayWrongLetters = ({
   );
 };
 
+const DisplayLettersToGuess = ({
+  displayedLetters,
+}: {
+  displayedLetters: string[];
+}) => {
+  return (
+    <Text className="text-4xl font-bold tracking-widest">
+      {displayedLetters.join(' ')}
+    </Text>
+  );
+};
+
 type ReducerParams = Record<string, unknown>;
 
 const toCamel = (name: string) =>
@@ -224,13 +236,9 @@ export default function Game({
   }>({});
 
   const makeGuess = useReducerInvoker('make_guess');
+  const switchTurns = useReducerInvoker('switch_turns');
 
   let wrongGuessCount = 0;
-  let guessedLetters: string[] = [];
-  let correctLetters: string[] = [];
-  let wrongLetters: string[] = [];
-  let gameWon = false;
-  let gameLost = false;
   console.log('in game:', gameId, playerId, gpId);
 
   const resolvedGameId = gameId ?? derivedIds.gameId;
@@ -238,7 +246,6 @@ export default function Game({
   const resolvedGamePlayerId = gpId ?? derivedIds.gamePlayerId;
 
   const spacetime = useSpacetimeDB();
-  //const { isActive, identity } = spacetime;
 
   const connection = spacetime.getConnection?.();
   if (connection) {
@@ -260,9 +267,9 @@ export default function Game({
   const [players] = useTable(tables.player);
   const [games] = useTable(tables.game);
   const [gamePlayers] = useTable(tables.gamePlayer);
-  const [responses] = useTable(tables.reducerResponse);
   const [guesses] = useTable(tables.guess);
 
+  //Get current player, game and game player
   const currentGame = useMemo(() => {
     if (gameId) {
       return games.find((g) => g.id === gameId);
@@ -274,14 +281,10 @@ export default function Game({
 
   const currentPlayer = useMemo(() => {
     if (playerId) {
-      console.log('looking for player id: ', playerId);
       const out = players.find((p) => p.id === playerId);
-      console.log('output of player search: ', out);
       return out;
     }
   }, [players, playerId]);
-
-  console.log('current player object is: ', currentPlayer);
 
   const currentGamePlayer = useMemo(() => {
     if (resolvedGamePlayerId) {
@@ -289,28 +292,44 @@ export default function Game({
     }
   }, [gamePlayers, resolvedGamePlayerId]);
 
+  //
   const word = currentGame?.word || '';
   console.log('word is: ', word);
   const username = currentPlayer?.username || '';
 
   const isCurrentTurn = currentGamePlayer?.isCurrentTurn;
-
-  //const getPlayerStatus = useReducerInvoker('get_player_status');
-  //const getGameStatus = useReducerInvoker('get_game_status');
-
   const gameStatus = currentGame?.status;
-  // const playerStatus = useMemo(() => {
-  //   getPlayerStatus({ gpId });
-  // }, [gamePlayers, gpId]);
-  console.log('game status is: ', gameStatus);
-  //console.log('player status is: ', playerStatus);
+  const gameWon = currentGamePlayer?.isWinner;
+  const gameLost = currentGamePlayer?.isLoser;
 
-  const lettersToGuess = Array.from(word);
+  // Guessing Logic: Retrieve guesses from DB
+  const userGuessRecords = guesses.filter(
+    (g) => g.gameId === resolvedGameId && g.playerId === resolvedPlayerId
+  );
+  const guessedLetters = userGuessRecords.map((g) => g.letter);
+  console.log(guessedLetters);
+
+  const correctLetters = userGuessRecords
+    .filter((r) => r.isCorrect)
+    .map((g) => g.letter);
+
+  const wrongLetters = userGuessRecords
+    .filter((r) => !r.isCorrect)
+    .map((g) => g.letter);
+
+  console.log('correct letters: ', correctLetters);
+
+  wrongGuessCount = wrongLetters.length;
+
+  console.log('game status is: ', gameStatus);
+
+  const lettersToGuess = Array.from(word).map((c) => c.toUpperCase());
 
   const displayedLetters = lettersToGuess.map((letter) =>
     correctLetters.includes(letter) ? letter : '_'
   );
 
+  // functions to handle game moves
   const onKeyPress = (letter: string) => {
     if (!gameId || !isCurrentTurn || !(gameStatus === 'in_progress')) return;
     if (gameWon || gameLost) return;
@@ -322,13 +341,13 @@ export default function Game({
       console.log(`trying to make guess with letter: ${letter}`);
       const normalizedLetter = letter.trim().toUpperCase();
       if (!word || !normalizedLetter) return;
-      const id = BigInt(gpId);
-      console.log(typeof id);
       makeGuess({ gamePlayerId: gpId, guess: normalizedLetter });
+      switchTurns({ currentGpId: gpId });
     },
-    [gpId, makeGuess, word]
+    [gpId, makeGuess, switchTurns, word]
   );
 
+  //useEffect hooks
   useEffect(() => {
     const guessCorrect =
       lettersToGuess.every((letter) => correctLetters.includes(letter)) &&
@@ -399,10 +418,8 @@ export default function Game({
       )}
 
       <DisplayHangmanImage wrongGuessCount={wrongGuessCount} />
+      <DisplayLettersToGuess displayedLetters={displayedLetters} />
       <DisplayWrongLetters wrongGuessedLetters={wrongLetters} />
-      <Text className="text-4xl font-bold tracking-widest">
-        {displayedLetters.join(' ')}
-      </Text>
 
       {showKeyboard ? (
         <DisplayKeyboard
