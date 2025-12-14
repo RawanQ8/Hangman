@@ -79,7 +79,6 @@ function useReducerInvoker(name: string) {
 export default function Login() {
   const router = useRouter();
   const [mode, setMode] = useState<'create' | 'join'>('create');
-  const [allFetched, setAllFetched] = useState(false);
   const [pendingCreate, setPendingCreate] = useState(false);
   const [pendingJoin, setPendingJoin] = useState(false);
   const [targetGameId, setTargetGameId] = useState<bigint | null>(null);
@@ -112,16 +111,9 @@ export default function Login() {
   const currentGame = useLatestResponse('create_game');
   const currentGamePlayer = useLatestResponse('create_game_player');
 
-  let currentPlayerId = null;
-  let currentGameId = null;
-
-  if (currentPlayer) {
-    currentPlayerId = normalizeId(currentPlayer.id);
-    console.log('created player id');
-  }
-  if (currentGame) {
-    currentGameId = normalizeId(currentGame.id);
-  }
+  const lastPlayerIdRef = useRef<bigint | null>(currentPlayer?.id ?? null);
+  const lastGameIdRef = useRef<bigint | null>(currentGame?.id ?? null);
+  const lastGpIdRef = useRef<bigint | null>(currentGamePlayer?.id ?? null);
 
   console.log('identity: ', identity);
   console.log('is active: ', isActive);
@@ -129,70 +121,117 @@ export default function Login() {
   console.log('current game ', currentGame);
   console.log('current game player ', currentGamePlayer);
 
-  if (currentGame && currentGamePlayer && currentPlayer) {
-    console.log('fetched all info!');
-  }
-
+  //create a game player when necessary data is fetched
   useEffect(() => {
-    if (!pendingCreate) return;
+    //if (!pendingCreate) return;
     if (!currentPlayer || !currentGame) return;
 
-    createGamePlayer({
-      playerId: currentPlayerId,
-      gameId: currentGameId,
-      isFirst: true,
-    });
-  }, [
-    currentPlayer,
-    currentGameId,
-    currentGame,
-    createGamePlayer,
-    currentPlayerId,
-    pendingCreate,
-  ]);
-
-  useEffect(() => {
-    if (currentGame && currentGamePlayer && currentPlayer) {
-      console.log('fetched all data successfully');
-      setAllFetched(true);
-      const gpId = currentGamePlayer.id;
-      console.log('gpId: ', gpId);
-
-      if (pendingCreate && currentGame) {
-        console.log('creating game');
-        router.push({
-          pathname: '/(app)/home',
-          params: {
-            gameId: currentGame.id || 0n,
-            gpId: gpId || 0n,
-            playerId: currentPlayer.id || 0n,
-          },
-        });
-        setPendingCreate(false);
+    // Ignore old responses: only act when IDs change
+    if (currentPlayer.id === lastPlayerIdRef.current) {
+      console.log('old player still');
+      return;
+    }
+    if (pendingCreate) {
+      if (currentGame.id === lastGameIdRef.current) {
+        console.log('old game still');
+        return;
       }
 
-      if (pendingJoin && targetGameId) {
-        console.log('joining game');
-        router.push({
-          pathname: '/(app)/home',
-          params: {
-            gameId: Number(targetGameId) || 0,
-            gpId: gpId || 0n,
-            playerId: currentPlayer.id || 0n,
-          },
-        });
-        setPendingJoin(false);
+      const playerId = normalizeId(currentPlayer.id);
+      const gameId = normalizeId(currentGame.id);
+
+      console.log('creating a game player in use effect (create)');
+
+      createGamePlayer({
+        playerId,
+        gameId,
+        isFirst: true,
+      });
+    } else if (pendingJoin) {
+      const playerId = normalizeId(currentPlayer.id);
+      const gameId = normalizeId(targetGameId);
+      try {
+        console.log('trying to join game');
+        joinGame({ gameId, playerId });
+      } catch (err) {
+        console.error(err);
       }
+
+      console.log('creating a game player in use effect (join)');
+
+      createGamePlayer({
+        playerId,
+        gameId,
+        isFirst: false,
+      });
+      //joinGame({ game_id: gameId, player_id: playerId });
     }
   }, [
-    allFetched,
-    currentGame,
-    currentGamePlayer,
+    pendingCreate,
     currentPlayer,
+    currentGame,
+    createGamePlayer,
+    pendingJoin,
+    targetGameId,
+    joinGame,
+  ]);
+
+  //go to game page when all data is fetched
+  useEffect(() => {
+    if (!currentPlayer || !currentGamePlayer) return;
+    // Ignore old gamePlayer: only react to new IDs
+    if (currentGamePlayer.id === lastGpIdRef.current) return;
+    console.log('fresh player and game player detected');
+
+    const playerId = normalizeId(currentPlayer.id);
+    const gpId = normalizeId(currentGamePlayer.id);
+
+    if (pendingCreate && currentGame) {
+      const gameId = normalizeId(currentGame.id);
+      console.log(`creating game with ids: ${gameId}, ${playerId} and ${gpId}`);
+      router.push({
+        pathname: '/(app)/home',
+        params: {
+          gameId,
+          gpId,
+          playerId,
+        },
+      });
+
+      // Mark these as the last-used responses
+      lastPlayerIdRef.current = currentPlayer.id;
+      lastGameIdRef.current = currentGame.id;
+      lastGpIdRef.current = currentGamePlayer.id;
+      setPendingCreate(false);
+    }
+
+    // JOIN FLOW: use the game ID typed by the user
+    if (pendingJoin && targetGameId) {
+      // If GamePlayer has a gameId field, optionally ensure it matches targetGameId:
+      // if (normalizeId(currentGamePlayer.gameId) !== normalizeId(targetGameId)) return;
+      const gameId = normalizeId(targetGameId);
+      console.log(`joining game with ids: ${gameId}, ${playerId} and ${gpId}`);
+
+      router.push({
+        pathname: '/(app)/home',
+        params: {
+          gameId,
+          gpId,
+          playerId,
+        },
+      });
+      lastPlayerIdRef.current = currentPlayer.id;
+      lastGpIdRef.current = currentGamePlayer.id;
+      setPendingJoin(false);
+    }
+  }, [
+    currentPlayer,
+    currentGamePlayer,
+    currentGame,
     pendingCreate,
     pendingJoin,
-    router,
     targetGameId,
+    router,
   ]);
 
   const onCreateNewGame: CreateFormProps['onSubmit'] = async (data) => {
@@ -200,17 +239,20 @@ export default function Login() {
       console.log('Not connected to SpacetimeDB yet');
       return;
     }
+
+    // Snapshot previous IDs before firing reducers
+    lastPlayerIdRef.current = currentPlayer?.id ?? null;
+    lastGameIdRef.current = currentGame?.id ?? null;
+    lastGpIdRef.current = currentGamePlayer?.id ?? null;
+
     setPendingCreate(true);
     setPendingJoin(false);
 
     const username = data.name.trim();
-    console.log('username: ', username);
+    console.log('username:', username);
 
     createPlayer({ username });
     createGame();
-
-    console.log('done creating player and game');
-    console.log('newest player: ', currentPlayer);
   };
 
   const onJoinGame: JoinFormProps['onSubmit'] = async (data) => {
@@ -218,17 +260,20 @@ export default function Login() {
       console.log('Not connected to SpacetimeDB yet');
       return;
     }
+
+    // Snapshot previous IDs before firing reducers
+    lastPlayerIdRef.current = currentPlayer?.id ?? null;
+    lastGpIdRef.current = currentGamePlayer?.id ?? null;
+
     const username = data.name.trim();
     const gameId = BigInt(data.id);
+
     setPendingJoin(true);
     setPendingCreate(false);
     setTargetGameId(gameId);
-    console.log('username: ', username);
+    console.log('username:', username);
 
     createPlayer({ username });
-    console.log('newest player: ', currentPlayer);
-
-    joinGame({ username, gameId });
   };
 
   return (

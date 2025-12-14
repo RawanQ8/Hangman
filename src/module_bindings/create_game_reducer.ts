@@ -10,6 +10,4 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export default {
-  username: __t.string(),
-};
+export default {};

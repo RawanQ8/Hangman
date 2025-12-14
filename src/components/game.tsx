@@ -161,6 +161,7 @@ function useReducerInvoker(name: string) {
 
   const run = useCallback(
     (params: ReducerParams = {}) => {
+      console.log('In reducer with: ', params);
       if (!schema) {
         console.error(`Reducer schema not found for ${name}`);
         return;
@@ -170,13 +171,16 @@ function useReducerInvoker(name: string) {
         queueRef.current.push(params);
         return;
       }
-      conn.callReducerWithParams(
-        schema.name,
-        schema.paramsType,
-        params,
-        'FullUpdate'
-      );
-      console.log('In reducer with: ', name);
+      try {
+        conn.callReducerWithParams(
+          schema.name,
+          schema.paramsType,
+          params,
+          'FullUpdate'
+        );
+      } catch (err) {
+        console.error(err);
+      }
     },
     [schema, getConnection, name]
   );
@@ -204,26 +208,29 @@ export default function Game({
   playerId: bigint;
   gpId: bigint;
 }) {
-  const [wrongGuessCount, setWrongGuessCount] = useState(0);
-  const [guessedLetters, setGuessedLetters] = useState<string[]>([]);
-  const [correctLetters, setCorrectLetters] = useState<string[]>([]);
-  const [wrongLetters, setWrongLetters] = useState<string[]>([]);
+  //const [wrongGuessCount, setWrongGuessCount] = useState(0);
+  //const [guessedLetters, setGuessedLetters] = useState<string[]>([]);
+  //const [correctLetters, setCorrectLetters] = useState<string[]>([]);
+  //const [wrongLetters, setWrongLetters] = useState<string[]>([]);
   const [currentGuess, setCurrentGuess] = useState('');
   const [showConfetti, setShowConfetti] = useState(false);
   const [showKeyboard, setShowKeyboard] = useState(true);
-  const [gameWon, setGameWon] = useState(false);
-  const [gameLost, setGameLost] = useState(false);
+  //const [gameWon, setGameWon] = useState(false);
+  //const [gameLost, setGameLost] = useState(false);
   const [derivedIds, setDerivedIds] = useState<{
     gameId?: bigint;
     playerId?: bigint;
     gamePlayerId?: bigint;
   }>({});
 
-  // if (!gameId) {
-  //   gameId = 0n;
-  //   playerId = 0n;
-  //   gpId = 0n;
-  // }
+  const makeGuess = useReducerInvoker('make_guess');
+
+  let wrongGuessCount = 0;
+  let guessedLetters: string[] = [];
+  let correctLetters: string[] = [];
+  let wrongLetters: string[] = [];
+  let gameWon = false;
+  let gameLost = false;
   console.log('in game:', gameId, playerId, gpId);
 
   const resolvedGameId = gameId ?? derivedIds.gameId;
@@ -262,6 +269,8 @@ export default function Game({
     }
     return games.find((g) => g.status !== 'won' && g.status !== 'lost');
   }, [games, gameId]);
+
+  console.log('current game object is: ', currentGame);
 
   const currentPlayer = useMemo(() => {
     if (playerId) {
@@ -308,43 +317,16 @@ export default function Game({
     handleGuess(letter);
   };
 
-  const submitMove = useCallback(
-    async (letter: string) => {
-      if (!gpId) return;
-      try {
-        console.log(`GP ${gpId} making guess: ${letter}`);
-        //await submitGuess(gpId, letter);
-      } catch (err) {
-        console.error('Error submitting guess', err);
-      }
-    },
-    [gpId]
-  );
-
   const handleGuess = useCallback(
     (letter: string) => {
+      console.log(`trying to make guess with letter: ${letter}`);
       const normalizedLetter = letter.trim().toUpperCase();
       if (!word || !normalizedLetter) return;
-      let guessApplied = false;
-      setGuessedLetters((prevGuessed) => {
-        if (prevGuessed.includes(normalizedLetter)) return prevGuessed;
-
-        guessApplied = true;
-        const isCorrect = word.includes(normalizedLetter);
-        if (isCorrect) {
-          setCorrectLetters((prev) => [...prev, normalizedLetter]);
-        } else {
-          setWrongGuessCount((prev) => prev + 1);
-          setWrongLetters((prev) => [...prev, normalizedLetter]);
-        }
-        return [...prevGuessed, normalizedLetter];
-      });
-
-      if (guessApplied) {
-        void submitMove(normalizedLetter);
-      }
+      const id = BigInt(gpId);
+      console.log(typeof id);
+      makeGuess({ gamePlayerId: gpId, guess: normalizedLetter });
     },
-    [submitMove, word]
+    [gpId, makeGuess, word]
   );
 
   useEffect(() => {
@@ -354,7 +336,7 @@ export default function Game({
       lettersToGuess.length > 0;
 
     if (guessCorrect && !gameWon) {
-      setGameWon(true);
+      //setGameWon(true);
       setShowConfetti(true);
     }
     const confettiTimer = setTimeout(() => {
@@ -366,17 +348,17 @@ export default function Game({
 
   useEffect(() => {
     if (wrongGuessCount >= 6 && !gameLost) {
-      setGameLost(true);
+      //setGameLost(true);
     }
   }, [wrongGuessCount, gameLost]);
 
   useEffect(() => {
     if (gameStatus === 'won' || gameStatus === 'lost') {
       if (currentGamePlayer?.isWinner) {
-        setGameWon(true);
+        //setGameWon(true);
         return;
       }
-      setGameLost(true);
+      //setGameLost(true);
     }
   }, [currentGamePlayer?.isWinner, gameStatus]);
 

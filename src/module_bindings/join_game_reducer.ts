@@ -12,5 +12,5 @@ import {
 
 export default {
   gameId: __t.u64(),
-  username: __t.string(),
+  playerId: __t.u64(),
 };

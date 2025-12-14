@@ -8,27 +8,25 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		142ECA7E90D75C61F89FB599 /* libPods-HangmanV2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = ECE8082A5BF744B7FCA77951 /* libPods-HangmanV2.a */; };
-		3CFD724532CB2E5291B6921C /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FF06DAE9E968F65824C693A /* ExpoModulesProvider.swift */; };
+		218555BF0F5ED278A01BADE8 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A41FDFABAE25CE2A3E333D81 /* PrivacyInfo.xcprivacy */; };
+		351C5560F597725127A2480E /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97391FCBA28D329BC6C26A60 /* ExpoModulesProvider.swift */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		60FE3C55E80DE9379796C7C5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 0C7C91A07C2B6209D57F4F2B /* PrivacyInfo.xcprivacy */; };
+		B6459CC8829D76E19982786A /* libPods-HangmanV2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 31A39061852FF2ACA95E8B40 /* libPods-HangmanV2.a */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
-		FA7B4F601C1A40568193F248 /* Inter.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3E346440F61741F6BFD23091 /* Inter.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		0C7C91A07C2B6209D57F4F2B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = HangmanV2/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* HangmanV2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HangmanV2.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = HangmanV2/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = HangmanV2/Info.plist; sourceTree = "<group>"; };
-		2FF06DAE9E968F65824C693A /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-HangmanV2/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		3E346440F61741F6BFD23091 /* Inter.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Inter.ttf; path = ../assets/fonts/Inter.ttf; sourceTree = "<group>"; };
+		31A39061852FF2ACA95E8B40 /* libPods-HangmanV2.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-HangmanV2.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		77CFEBDF78EEC8D04240B0E4 /* Pods-HangmanV2.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HangmanV2.release.xcconfig"; path = "Target Support Files/Pods-HangmanV2/Pods-HangmanV2.release.xcconfig"; sourceTree = "<group>"; };
+		97391FCBA28D329BC6C26A60 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-HangmanV2/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		A41FDFABAE25CE2A3E333D81 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = HangmanV2/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = HangmanV2/SplashScreen.storyboard; sourceTree = "<group>"; };
+		ACB88F187A658F882D0FD857 /* Pods-HangmanV2.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HangmanV2.debug.xcconfig"; path = "Target Support Files/Pods-HangmanV2/Pods-HangmanV2.debug.xcconfig"; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		BBE620C7C549100A2018BD32 /* Pods-HangmanV2.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HangmanV2.debug.xcconfig"; path = "Target Support Files/Pods-HangmanV2/Pods-HangmanV2.debug.xcconfig"; sourceTree = "<group>"; };
-		E6DB0083D7706AC9625A8AAB /* Pods-HangmanV2.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HangmanV2.release.xcconfig"; path = "Target Support Files/Pods-HangmanV2/Pods-HangmanV2.release.xcconfig"; sourceTree = "<group>"; };
-		ECE8082A5BF744B7FCA77951 /* libPods-HangmanV2.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-HangmanV2.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = HangmanV2/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* HangmanV2-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "HangmanV2-Bridging-Header.h"; path = "HangmanV2/HangmanV2-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -39,7 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				142ECA7E90D75C61F89FB599 /* libPods-HangmanV2.a in Frameworks */,
+				B6459CC8829D76E19982786A /* libPods-HangmanV2.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -55,26 +53,36 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				0C7C91A07C2B6209D57F4F2B /* PrivacyInfo.xcprivacy */,
+				A41FDFABAE25CE2A3E333D81 /* PrivacyInfo.xcprivacy */,
 			);
 			name = HangmanV2;
+			sourceTree = "<group>";
+		};
+		273CA9A2D1CFC7B77D2130C0 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				ACB88F187A658F882D0FD857 /* Pods-HangmanV2.debug.xcconfig */,
+				77CFEBDF78EEC8D04240B0E4 /* Pods-HangmanV2.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				ECE8082A5BF744B7FCA77951 /* libPods-HangmanV2.a */,
+				31A39061852FF2ACA95E8B40 /* libPods-HangmanV2.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		603B73631404E1C60BD72C86 /* HangmanV2 */ = {
+		5BDDD748C95906E19F0AB825 /* ExpoModulesProviders */ = {
 			isa = PBXGroup;
 			children = (
-				2FF06DAE9E968F65824C693A /* ExpoModulesProvider.swift */,
+				B77B4798A38C2D2377322803 /* HangmanV2 */,
 			);
-			name = HangmanV2;
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -91,9 +99,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				8D75CDA68C64407D903C6785 /* Resources */,
-				DEC1EE6E606DB40105A8F958 /* Pods */,
-				C8AC9BE25E06636683DD79D3 /* ExpoModulesProviders */,
+				273CA9A2D1CFC7B77D2130C0 /* Pods */,
+				5BDDD748C95906E19F0AB825 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -108,13 +115,12 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		8D75CDA68C64407D903C6785 /* Resources */ = {
+		B77B4798A38C2D2377322803 /* HangmanV2 */ = {
 			isa = PBXGroup;
 			children = (
-				3E346440F61741F6BFD23091 /* Inter.ttf */,
+				97391FCBA28D329BC6C26A60 /* ExpoModulesProvider.swift */,
 			);
-			name = Resources;
-			path = "";
+			name = HangmanV2;
 			sourceTree = "<group>";
 		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
@@ -126,24 +132,6 @@
 			path = HangmanV2/Supporting;
 			sourceTree = "<group>";
 		};
-		C8AC9BE25E06636683DD79D3 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				603B73631404E1C60BD72C86 /* HangmanV2 */,
-			);
-			name = ExpoModulesProviders;
-			sourceTree = "<group>";
-		};
-		DEC1EE6E606DB40105A8F958 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				BBE620C7C549100A2018BD32 /* Pods-HangmanV2.debug.xcconfig */,
-				E6DB0083D7706AC9625A8AAB /* Pods-HangmanV2.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -152,13 +140,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "HangmanV2" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				310C33F7B32709C7A6ED4AFF /* [Expo] Configure project */,
+				0CBC2051ACBD5B8260C80D98 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				465FFBC6B4FFAE5FB57366DB /* [CP] Embed Pods Frameworks */,
+				DC58106CE20E9B63A2BCE080 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -208,8 +196,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				FA7B4F601C1A40568193F248 /* Inter.ttf in Resources */,
-				60FE3C55E80DE9379796C7C5 /* PrivacyInfo.xcprivacy in Resources */,
+				218555BF0F5ED278A01BADE8 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -253,7 +240,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		310C33F7B32709C7A6ED4AFF /* [Expo] Configure project */ = {
+		0CBC2051ACBD5B8260C80D98 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -271,24 +258,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-HangmanV2/expo-configure-project.sh\"\n";
-		};
-		465FFBC6B4FFAE5FB57366DB /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-HangmanV2/Pods-HangmanV2-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-HangmanV2/Pods-HangmanV2-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
 		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -334,6 +303,24 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-HangmanV2/Pods-HangmanV2-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
+		DC58106CE20E9B63A2BCE080 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-HangmanV2/Pods-HangmanV2-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-HangmanV2/Pods-HangmanV2-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -342,7 +329,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				3CFD724532CB2E5291B6921C /* ExpoModulesProvider.swift in Sources */,
+				351C5560F597725127A2480E /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -351,11 +338,10 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = BBE620C7C549100A2018BD32 /* Pods-HangmanV2.debug.xcconfig */;
+			baseConfigurationReference = ACB88F187A658F882D0FD857 /* Pods-HangmanV2.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = HangmanV2/HangmanV2.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -375,23 +361,21 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = com.hangmanv2.development;
+				PRODUCT_BUNDLE_IDENTIFIER = org.name.HangmanV2;
 				PRODUCT_NAME = HangmanV2;
 				SWIFT_OBJC_BRIDGING_HEADER = "HangmanV2/HangmanV2-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Debug;
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E6DB0083D7706AC9625A8AAB /* Pods-HangmanV2.release.xcconfig */;
+			baseConfigurationReference = 77CFEBDF78EEC8D04240B0E4 /* Pods-HangmanV2.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = HangmanV2/HangmanV2.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = HangmanV2/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
@@ -406,11 +390,10 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.hangmanv2.development;
+				PRODUCT_BUNDLE_IDENTIFIER = org.name.HangmanV2;
 				PRODUCT_NAME = HangmanV2;
 				SWIFT_OBJC_BRIDGING_HEADER = "HangmanV2/HangmanV2-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Release;
