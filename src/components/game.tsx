@@ -1,6 +1,6 @@
 /* eslint-disable unused-imports/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useRouter } from 'expo-router';
+import { router } from 'expo-router';
 import React, {
   useCallback,
   useEffect,
@@ -14,6 +14,7 @@ import { useSpacetimeDB, useTable } from 'spacetimedb/react';
 
 import { Button, Text, TouchableOpacity, View } from '@/components/ui';
 import { reducers, tables } from '@/module_bindings';
+import { useGameDataStore } from '@/store/game-data-store';
 
 import hangman0 from '../../assets/hangman/hangman0.png';
 import hangman1 from '../../assets/hangman/hangman1.png';
@@ -220,79 +221,47 @@ export default function Game({
   playerId: bigint;
   gpId: bigint;
 }) {
-  //const [wrongGuessCount, setWrongGuessCount] = useState(0);
-  //const [guessedLetters, setGuessedLetters] = useState<string[]>([]);
-  //const [correctLetters, setCorrectLetters] = useState<string[]>([]);
-  //const [wrongLetters, setWrongLetters] = useState<string[]>([]);
   const [currentGuess, setCurrentGuess] = useState('');
   const [showConfetti, setShowConfetti] = useState(false);
   const [showKeyboard, setShowKeyboard] = useState(true);
-  //const [gameWon, setGameWon] = useState(false);
-  //const [gameLost, setGameLost] = useState(false);
-  const [derivedIds, setDerivedIds] = useState<{
-    gameId?: bigint;
-    playerId?: bigint;
-    gamePlayerId?: bigint;
-  }>({});
+
+  const currentGame = useGameDataStore.use.currentGame();
+  const currentPlayer = useGameDataStore.use.currentPlayer();
+  const currentGamePlayer = useGameDataStore.use.currentGamePlayer();
 
   const makeGuess = useReducerInvoker('make_guess');
   const switchTurns = useReducerInvoker('switch_turns');
 
-  let wrongGuessCount = 0;
   console.log('in game:', gameId, playerId, gpId);
 
-  const resolvedGameId = gameId ?? derivedIds.gameId;
-  const resolvedPlayerId = playerId ?? derivedIds.playerId;
-  const resolvedGamePlayerId = gpId ?? derivedIds.gamePlayerId;
+  const resolvedGameId = gameId ?? currentGame?.id;
+  const resolvedPlayerId = playerId ?? currentPlayer?.id;
+  const resolvedGamePlayerId = gpId ?? currentGamePlayer?.id;
 
   const spacetime = useSpacetimeDB();
 
-  const connection = spacetime.getConnection?.();
-  if (connection) {
+  useEffect(() => {
+    const connection = spacetime.getConnection?.();
+
+    if (!connection) return;
+
     for (const tableDef of tablesList) {
       const snake = tableDef.name;
       const camel = tableDef.accessorName ?? snake;
       if (snake === camel) continue;
-      const hasSnake = Object.prototype.hasOwnProperty.call(
-        connection.db,
-        snake
-      );
-      if (hasSnake) continue;
+      if (Object.prototype.hasOwnProperty.call(connection.db, snake)) continue;
+
       const descriptor = Object.getOwnPropertyDescriptor(connection.db, camel);
       if (!descriptor) continue;
+
       Object.defineProperty(connection.db, snake, descriptor);
     }
-  }
+  }, [spacetime]);
 
-  const [players] = useTable(tables.player);
-  const [games] = useTable(tables.game);
-  const [gamePlayers] = useTable(tables.gamePlayer);
-  const [guesses] = useTable(tables.guess);
+  const [guesses = []] = useTable(tables.guess) ?? [];
+  let wrongGuessCount = 0;
 
-  //Get current player, game and game player
-  const currentGame = useMemo(() => {
-    if (gameId) {
-      return games.find((g) => g.id === gameId);
-    }
-    return games.find((g) => g.status !== 'won' && g.status !== 'lost');
-  }, [games, gameId]);
-
-  console.log('current game object is: ', currentGame);
-
-  const currentPlayer = useMemo(() => {
-    if (playerId) {
-      const out = players.find((p) => p.id === playerId);
-      return out;
-    }
-  }, [players, playerId]);
-
-  const currentGamePlayer = useMemo(() => {
-    if (resolvedGamePlayerId) {
-      return gamePlayers.find((gp) => gp.id === resolvedGamePlayerId);
-    }
-  }, [gamePlayers, resolvedGamePlayerId]);
-
-  //
+  //Get necessary variables from db
   const word = currentGame?.word || '';
   console.log('word is: ', word);
   const username = currentPlayer?.username || '';
@@ -331,7 +300,8 @@ export default function Game({
 
   // functions to handle game moves
   const onKeyPress = (letter: string) => {
-    if (!gameId || !isCurrentTurn || !(gameStatus === 'in_progress')) return;
+    if (!resolvedGameId || !isCurrentTurn || !(gameStatus === 'in_progress'))
+      return;
     if (gameWon || gameLost) return;
     handleGuess(letter);
   };
@@ -340,121 +310,104 @@ export default function Game({
     (letter: string) => {
       console.log(`trying to make guess with letter: ${letter}`);
       const normalizedLetter = letter.trim().toUpperCase();
-      if (!word || !normalizedLetter) return;
-      makeGuess({ gamePlayerId: gpId, guess: normalizedLetter });
-      switchTurns({ currentGpId: gpId });
+      if (!word || !normalizedLetter || !resolvedGamePlayerId) return;
+      makeGuess({
+        gamePlayerId: resolvedGamePlayerId,
+        guess: normalizedLetter,
+      });
+      switchTurns({ currentGpId: resolvedGamePlayerId });
     },
-    [gpId, makeGuess, switchTurns, word]
+    [resolvedGamePlayerId, makeGuess, switchTurns, word]
   );
 
-  //useEffect hooks
-  useEffect(() => {
-    const guessCorrect =
-      lettersToGuess.every((letter) => correctLetters.includes(letter)) &&
-      wrongGuessCount < 6 &&
-      lettersToGuess.length > 0;
-
-    if (guessCorrect && !gameWon) {
-      //setGameWon(true);
-      setShowConfetti(true);
-    }
-    const confettiTimer = setTimeout(() => {
-      setShowConfetti(false);
-    }, 3000);
-
-    return () => clearTimeout(confettiTimer);
-  }, [correctLetters, gameWon, lettersToGuess, wrongGuessCount]);
-
-  useEffect(() => {
-    if (wrongGuessCount >= 6 && !gameLost) {
-      //setGameLost(true);
-    }
-  }, [wrongGuessCount, gameLost]);
-
-  useEffect(() => {
-    if (gameStatus === 'won' || gameStatus === 'lost') {
-      if (currentGamePlayer?.isWinner) {
-        //setGameWon(true);
-        return;
-      }
-      //setGameLost(true);
-    }
-  }, [currentGamePlayer?.isWinner, gameStatus]);
-
-  const router = useRouter();
+  if (!currentGame) return <Text>Loading Game …</Text>;
+  if (!currentPlayer) return <Text>Loading Player …</Text>;
+  if (!currentGamePlayer) return <Text>Loading Game Player …</Text>;
 
   return (
-    <View className="flex-1 items-center justify-center gap-3">
-      {/* <Text className="text-2xl text-blue-800">Hangman Game</Text> */}
-      {showConfetti && (
-        <ConfettiCannon
-          count={200}
-          origin={{ x: -10, y: 0 }}
-          autoStart={true}
-          fadeOut={true}
-          explosionSpeed={350}
-        />
-      )}
-      <Text>Game ID: {gameId}</Text>
-      <Text>Player: {username}</Text>
-      {/* <Text>GP: {gpId}</Text> */}
-      {gameWon && (
-        <Text className="mb-3 text-xl font-bold text-blue-800">
-          Congratulations You Win!
-        </Text>
-      )}
-      {gameLost && (
-        <>
-          <Text className="mb-3 text-xl font-semibold text-red-800">
-            You Lost 😢
+    <>
+      <View className="flex-1 items-center justify-center gap-3">
+        {/* <Text className="text-2xl text-blue-800">Hangman Game</Text> */}
+        {showConfetti && (
+          <ConfettiCannon
+            count={200}
+            origin={{ x: -10, y: 0 }}
+            autoStart={true}
+            fadeOut={true}
+            explosionSpeed={350}
+          />
+        )}
+        <View className="mb-4 w-full items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
+          <Text className="text-xs uppercase tracking-[3px] text-blue-700">
+            Game Code
           </Text>
-          <View className="flex flex-row">
-            <Text className="mb-3 text-xl ">Correct Word: </Text>
-            <Text className="mb-3 text-xl font-semibold text-green-800">
-              {word}
+          <Text className="text-2xl font-semibold text-blue-900">
+            {resolvedGameId?.toString?.() ?? ''}
+          </Text>
+          <View className="items-center rounded-full border border-blue-100 bg-white/80 px-3 py-1">
+            <Text className="text-sm text-blue-800">
+              Playing as <Text className="font-semibold">{username}</Text>
             </Text>
           </View>
-        </>
-      )}
+        </View>
+        {gameWon && (
+          <Text className="mb-3 text-xl font-bold text-blue-800">
+            Congratulations You Win!
+          </Text>
+        )}
+        {gameLost && (
+          <>
+            <Text className="mb-3 text-xl font-semibold text-red-800">
+              You Lost 😢
+            </Text>
+            <View className="flex flex-row">
+              <Text className="mb-3 text-xl ">Correct Word: </Text>
+              <Text className="mb-3 text-xl font-semibold text-green-800">
+                {word.toUpperCase()}
+              </Text>
+            </View>
+          </>
+        )}
 
-      <DisplayHangmanImage wrongGuessCount={wrongGuessCount} />
-      <DisplayLettersToGuess displayedLetters={displayedLetters} />
-      <DisplayWrongLetters wrongGuessedLetters={wrongLetters} />
+        <DisplayHangmanImage wrongGuessCount={wrongGuessCount} />
+        <DisplayLettersToGuess displayedLetters={displayedLetters} />
+        <DisplayWrongLetters wrongGuessedLetters={wrongLetters} />
 
-      {showKeyboard ? (
-        <DisplayKeyboard
-          onKeyPress={onKeyPress}
-          guessedLetters={guessedLetters}
-          correctLetters={correctLetters}
-          locked={!isCurrentTurn || !(gameStatus === 'in_progress')}
-        />
-      ) : (
-        <TextInput
-          placeholder="A"
-          value={currentGuess}
-          onChangeText={setCurrentGuess}
-          className="mb-5 mt-4 w-20 rounded border
+        {showKeyboard ? (
+          <DisplayKeyboard
+            onKeyPress={onKeyPress}
+            guessedLetters={guessedLetters}
+            correctLetters={correctLetters}
+            locked={!isCurrentTurn || !(gameStatus === 'in_progress')}
+          />
+        ) : (
+          <TextInput
+            placeholder="A"
+            value={currentGuess}
+            onChangeText={setCurrentGuess}
+            className="mb-5 mt-4 w-20 rounded border
              border-gray-300 p-6 text-center text-xl"
-          maxLength={1}
-          onSubmitEditing={() => {
-            onKeyPress(currentGuess);
-            setCurrentGuess('');
+            maxLength={1}
+            onSubmitEditing={() => {
+              onKeyPress(currentGuess);
+              setCurrentGuess('');
+            }}
+            autoFocus={true}
+            autoCapitalize="characters"
+            editable={!gameWon && !gameLost && isCurrentTurn}
+          />
+        )}
+        <Button
+          className="mt-4 rounded-lg bg-blue-900"
+          onPress={() => {
+            router.push('/(app)');
           }}
-          autoFocus={true}
-          autoCapitalize="characters"
-          editable={!gameWon && !gameLost && isCurrentTurn}
-        />
-      )}
-      <Button
-        className="mt-4 rounded-lg bg-blue-900"
-        onPress={() => {
-          router.push('/(app)');
-        }}
-      >
-        <Text className="text-white">
-          {gameWon || gameLost ? 'New Game' : 'Start Over'}
-        </Text>
-      </Button>
-    </View>
+        >
+          <Text className="text-white">
+            {gameWon || gameLost ? 'New Game' : 'Start Over'}
+          </Text>
+        </Button>
+      </View>
+    </>
   );
 }

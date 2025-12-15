@@ -20,6 +20,7 @@ import {
 } from '@/components/ui';
 import { useLatestResponse } from '@/hooks/useLatestResponse';
 import { normalizeId } from '@/lib/normalize-id';
+import { useGameDataStore } from '@/store/game-data-store';
 
 import { reducers, tables } from '../../module_bindings';
 
@@ -110,6 +111,11 @@ export default function Login() {
   const currentPlayer = useLatestResponse('create_player');
   const currentGame = useLatestResponse('create_game');
   const currentGamePlayer = useLatestResponse('create_game_player');
+  const setCurrentGame = useGameDataStore((state) => state.setCurrentGame);
+  const setCurrentPlayer = useGameDataStore((state) => state.setCurrentPlayer);
+  const setCurrentGamePlayer = useGameDataStore(
+    (state) => state.setCurrentGamePlayer
+  );
 
   const lastPlayerIdRef = useRef<bigint | null>(currentPlayer?.id ?? null);
   const lastGameIdRef = useRef<bigint | null>(currentGame?.id ?? null);
@@ -175,6 +181,24 @@ export default function Login() {
     targetGameId,
     joinGame,
   ]);
+
+  useEffect(() => {
+    if (currentPlayer) {
+      setCurrentPlayer(currentPlayer);
+    }
+  }, [currentPlayer, setCurrentPlayer]);
+
+  useEffect(() => {
+    if (currentGame) {
+      setCurrentGame(currentGame);
+    }
+  }, [currentGame, setCurrentGame]);
+
+  useEffect(() => {
+    if (currentGamePlayer) {
+      setCurrentGamePlayer(currentGamePlayer);
+    }
+  }, [currentGamePlayer, setCurrentGamePlayer]);
 
   //go to game page when all data is fetched
   useEffect(() => {
