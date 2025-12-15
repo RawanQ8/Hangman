@@ -183,22 +183,25 @@ export default function Login() {
   ]);
 
   useEffect(() => {
+    if (!pendingCreate && !pendingJoin) return;
     if (currentPlayer) {
       setCurrentPlayer(currentPlayer);
     }
-  }, [currentPlayer, setCurrentPlayer]);
+  }, [currentPlayer, pendingCreate, pendingJoin, setCurrentPlayer]);
 
   useEffect(() => {
+    if (!pendingCreate && !pendingJoin) return;
     if (currentGame) {
       setCurrentGame(currentGame);
     }
-  }, [currentGame, setCurrentGame]);
+  }, [currentGame, pendingCreate, pendingJoin, setCurrentGame]);
 
   useEffect(() => {
+    if (!pendingCreate && !pendingJoin) return;
     if (currentGamePlayer) {
       setCurrentGamePlayer(currentGamePlayer);
     }
-  }, [currentGamePlayer, setCurrentGamePlayer]);
+  }, [currentGamePlayer, pendingCreate, pendingJoin, setCurrentGamePlayer]);
 
   //go to game page when all data is fetched
   useEffect(() => {

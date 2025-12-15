@@ -13,6 +13,7 @@ import ConfettiCannon from 'react-native-confetti-cannon';
 import { useSpacetimeDB, useTable } from 'spacetimedb/react';
 
 import { Button, Text, TouchableOpacity, View } from '@/components/ui';
+import { useLatestResponse } from '@/hooks/useLatestResponse';
 import { reducers, tables } from '@/module_bindings';
 import { useGameDataStore } from '@/store/game-data-store';
 
@@ -23,6 +24,8 @@ import hangman3 from '../../assets/hangman/hangman3.png';
 import hangman4 from '../../assets/hangman/hangman4.png';
 import hangman5 from '../../assets/hangman/hangman5.png';
 import hangman6 from '../../assets/hangman/hangman6.png';
+import { type GamePlayer } from '../module_bindings/game_player_type';
+import { type Game } from '../module_bindings/game_type';
 
 const KeyboardKey = ({
   letter,
@@ -42,7 +45,7 @@ const KeyboardKey = ({
       statusStyle = 'bg-yellow-500';
       break;
     case 'locked':
-      statusStyle = 'bg-gray-300';
+      statusStyle = 'bg-gray-100';
       break;
     default:
       statusStyle = 'bg-white';
@@ -50,7 +53,7 @@ const KeyboardKey = ({
 
   return (
     <TouchableOpacity onPress={() => onPress(letter)}>
-      <Text className={`m-1 rounded border border-gray-300 p-3 ${statusStyle}`}>
+      <Text className={`m-1 rounded border border-gray-200 p-3 ${statusStyle}`}>
         {letter}
       </Text>
     </TouchableOpacity>
@@ -155,6 +158,20 @@ const DisplayLettersToGuess = ({
 };
 
 type ReducerParams = Record<string, unknown>;
+const sameId = (a: any, b: any) => {
+  if (a == null || b == null) return false;
+  const norm = (x: any) => {
+    if (typeof x === 'bigint') return x.toString();
+    if (typeof x === 'number') return x.toString();
+    if (typeof x === 'string') return x;
+    if (typeof x === 'object') {
+      if ('value' in x) return String((x as any).value);
+      if ('toString' in x) return String(x);
+    }
+    return String(x);
+  };
+  return norm(a) === norm(b);
+};
 
 const toCamel = (name: string) =>
   name.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
@@ -228,15 +245,25 @@ export default function Game({
   const currentGame = useGameDataStore.use.currentGame();
   const currentPlayer = useGameDataStore.use.currentPlayer();
   const currentGamePlayer = useGameDataStore.use.currentGamePlayer();
+  const setCurrentGame = useGameDataStore((state) => state.setCurrentGame);
+  const setCurrentGamePlayer = useGameDataStore(
+    (state) => state.setCurrentGamePlayer
+  );
 
   const makeGuess = useReducerInvoker('make_guess');
   const switchTurns = useReducerInvoker('switch_turns');
+  const fetchGame = useReducerInvoker('get_game');
+  const fetchGamePlayerStatus = useReducerInvoker('get_player_status');
+  const latestGameResponse = useLatestResponse<Game>('get_game');
+  const latestGamePlayerStatus =
+    useLatestResponse<GamePlayer>('get_player_status');
 
   console.log('in game:', gameId, playerId, gpId);
 
   const resolvedGameId = gameId ?? currentGame?.id;
   const resolvedPlayerId = playerId ?? currentPlayer?.id;
   const resolvedGamePlayerId = gpId ?? currentGamePlayer?.id;
+  const lastResponseIdRef = useRef<bigint | null>(null);
 
   const spacetime = useSpacetimeDB();
 
@@ -258,12 +285,12 @@ export default function Game({
     }
   }, [spacetime]);
 
+  const [responses = []] = useTable(tables.reducerResponse) ?? [];
   const [guesses = []] = useTable(tables.guess) ?? [];
   let wrongGuessCount = 0;
 
   //Get necessary variables from db
   const word = currentGame?.word || '';
-  console.log('word is: ', word);
   const username = currentPlayer?.username || '';
 
   const isCurrentTurn = currentGamePlayer?.isCurrentTurn;
@@ -297,6 +324,60 @@ export default function Game({
   const displayedLetters = lettersToGuess.map((letter) =>
     correctLetters.includes(letter) ? letter : '_'
   );
+
+  useEffect(() => {
+    if (!resolvedGameId || !resolvedGamePlayerId) return;
+    const relevantReducers = new Set([
+      'make_guess',
+      'switch_turns',
+      'create_player',
+    ]);
+
+    let newestRelevant: bigint | null = null;
+    for (const row of responses) {
+      if (!relevantReducers.has(row.reducer)) continue;
+      if (newestRelevant === null || row.id > newestRelevant) {
+        newestRelevant = row.id;
+      }
+    }
+
+    if (newestRelevant === null) return;
+    if (
+      lastResponseIdRef.current !== null &&
+      newestRelevant <= lastResponseIdRef.current
+    )
+      return;
+
+    lastResponseIdRef.current = newestRelevant;
+    fetchGame({ id: resolvedGameId });
+    fetchGamePlayerStatus({ gpId: resolvedGamePlayerId });
+  }, [
+    responses,
+    resolvedGameId,
+    resolvedGamePlayerId,
+    fetchGame,
+    fetchGamePlayerStatus,
+  ]);
+
+  useEffect(() => {
+    if (
+      latestGameResponse &&
+      currentGame?.id &&
+      sameId(latestGameResponse.id, currentGame.id)
+    ) {
+      setCurrentGame(latestGameResponse);
+    }
+  }, [currentGame?.id, latestGameResponse, setCurrentGame]);
+
+  useEffect(() => {
+    if (
+      latestGamePlayerStatus &&
+      currentGamePlayer?.id &&
+      sameId(latestGamePlayerStatus.id, currentGamePlayer.id)
+    ) {
+      setCurrentGamePlayer(latestGamePlayerStatus);
+    }
+  }, [currentGamePlayer?.id, latestGamePlayerStatus, setCurrentGamePlayer]);
 
   // functions to handle game moves
   const onKeyPress = (letter: string) => {

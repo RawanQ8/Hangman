@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 
 import { createSelectors } from '@/lib/utils';
-import type { Game, GamePlayer, Player } from '@/module_bindings';
+import type { GamePlayer } from '@/module_bindings/game_player_type';
+import type { Game } from '@/module_bindings/game_type';
+import type { Player } from '@/module_bindings/player_type';
 
 type GameDataState = {
   currentGame: Game | null;
