@@ -47,6 +47,8 @@ import GetGame from "./get_game_reducer";
 export { GetGame };
 import GetGameGuesses from "./get_game_guesses_reducer";
 export { GetGameGuesses };
+import GetGamePlayer from "./get_game_player_reducer";
+export { GetGamePlayer };
 import GetGameStatus from "./get_game_status_reducer";
 export { GetGameStatus };
 import GetPlayer from "./get_player_reducer";
@@ -191,6 +193,7 @@ const reducersSchema = __reducers(
   __reducerSchema("get_all_words", GetAllWords),
   __reducerSchema("get_game", GetGame),
   __reducerSchema("get_game_guesses", GetGameGuesses),
+  __reducerSchema("get_game_player", GetGamePlayer),
   __reducerSchema("get_game_status", GetGameStatus),
   __reducerSchema("get_player", GetPlayer),
   __reducerSchema("get_player_guesses", GetPlayerGuesses),

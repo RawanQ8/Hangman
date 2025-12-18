@@ -123,9 +123,9 @@ export default function Login() {
 
   console.log('identity: ', identity);
   console.log('is active: ', isActive);
-  console.log('current player ', currentPlayer);
-  console.log('current game ', currentGame);
-  console.log('current game player ', currentGamePlayer);
+  // console.log('current player ', currentPlayer);
+  // console.log('current game ', currentGame);
+  // console.log('current game player ', currentGamePlayer);
 
   //create a game player when necessary data is fetched
   useEffect(() => {

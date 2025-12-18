@@ -184,6 +184,19 @@ const getReducerSchema = (name: string) => {
   return reducersLookup[camel] ?? reducersLookup[name];
 };
 
+const shallowEqual = (
+  a: Record<string, unknown> | null,
+  b: Record<string, unknown> | null
+) => {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const key of keys) {
+    if (a[key] !== b[key]) return false;
+  }
+  return true;
+};
+
 function useReducerInvoker(name: string) {
   const schema = useMemo(() => getReducerSchema(name), [name]);
   const { getConnection, isActive } = useSpacetimeDB();
@@ -191,7 +204,7 @@ function useReducerInvoker(name: string) {
 
   const run = useCallback(
     (params: ReducerParams = {}) => {
-      console.log('In reducer with: ', params);
+      console.log(`In reducer ${name} with params: `, params);
       if (!schema) {
         console.error(`Reducer schema not found for ${name}`);
         return;
@@ -244,8 +257,11 @@ export default function Game({
 
   const currentGame = useGameDataStore.use.currentGame();
   const currentPlayer = useGameDataStore.use.currentPlayer();
-  const currentGamePlayer = useGameDataStore.use.currentGamePlayer();
+  const currentGamePlayer: GamePlayer =
+    useGameDataStore.use.currentGamePlayer();
+
   const setCurrentGame = useGameDataStore((state) => state.setCurrentGame);
+  const setCurrentPlayer = useGameDataStore((state) => state.setCurrentPlayer);
   const setCurrentGamePlayer = useGameDataStore(
     (state) => state.setCurrentGamePlayer
   );
@@ -253,10 +269,10 @@ export default function Game({
   const makeGuess = useReducerInvoker('make_guess');
   const switchTurns = useReducerInvoker('switch_turns');
   const fetchGame = useReducerInvoker('get_game');
-  const fetchGamePlayerStatus = useReducerInvoker('get_player_status');
+  const fetchGamePlayer = useReducerInvoker('get_game_player');
   const latestGameResponse = useLatestResponse<Game>('get_game');
-  const latestGamePlayerStatus =
-    useLatestResponse<GamePlayer>('get_player_status');
+  const latestGamePlayerResponse =
+    useLatestResponse<GamePlayer>('get_game_player');
 
   console.log('in game:', gameId, playerId, gpId);
 
@@ -290,13 +306,12 @@ export default function Game({
   let wrongGuessCount = 0;
 
   //Get necessary variables from db
-  const word = currentGame?.word || '';
-  const username = currentPlayer?.username || '';
-
-  const isCurrentTurn = currentGamePlayer?.isCurrentTurn;
-  const gameStatus = currentGame?.status;
-  const gameWon = currentGamePlayer?.isWinner;
-  const gameLost = currentGamePlayer?.isLoser;
+  const word = currentGame.word || '';
+  const username = currentPlayer.username || '';
+  const isCurrentTurn = currentGamePlayer.is_current_turn;
+  const gameStatus = currentGame.status;
+  const gameWon = currentGamePlayer.isWinner;
+  const gameLost = currentGamePlayer.isLoser;
 
   // Guessing Logic: Retrieve guesses from DB
   const userGuessRecords = guesses.filter(
@@ -325,14 +340,15 @@ export default function Game({
     correctLetters.includes(letter) ? letter : '_'
   );
 
+  //fetch updated records
   useEffect(() => {
     if (!resolvedGameId || !resolvedGamePlayerId) return;
     const relevantReducers = new Set([
       'make_guess',
       'switch_turns',
-      'create_player',
+      'join_game',
     ]);
-
+    console.log('new response');
     let newestRelevant: bigint | null = null;
     for (const row of responses) {
       if (!relevantReducers.has(row.reducer)) continue;
@@ -350,34 +366,57 @@ export default function Game({
 
     lastResponseIdRef.current = newestRelevant;
     fetchGame({ id: resolvedGameId });
-    fetchGamePlayerStatus({ gpId: resolvedGamePlayerId });
+    fetchGamePlayer({ gpId: resolvedGamePlayerId });
   }, [
     responses,
     resolvedGameId,
     resolvedGamePlayerId,
     fetchGame,
-    fetchGamePlayerStatus,
+    fetchGamePlayer,
   ]);
 
+  //update current game
   useEffect(() => {
     if (
       latestGameResponse &&
       currentGame?.id &&
       sameId(latestGameResponse.id, currentGame.id)
     ) {
+      console.log('Setting current game: ', latestGameResponse);
       setCurrentGame(latestGameResponse);
     }
   }, [currentGame?.id, latestGameResponse, setCurrentGame]);
 
+  //update current game player
   useEffect(() => {
+    console.log('latest game player now: ', latestGamePlayerResponse);
     if (
-      latestGamePlayerStatus &&
-      currentGamePlayer?.id &&
-      sameId(latestGamePlayerStatus.id, currentGamePlayer.id)
+      latestGamePlayerResponse &&
+      resolvedGamePlayerId &&
+      sameId(latestGamePlayerResponse.id, resolvedGamePlayerId)
     ) {
-      setCurrentGamePlayer(latestGamePlayerStatus);
+      const mergedPlayer = currentGamePlayer
+        ? {
+            ...currentGamePlayer,
+            ...latestGamePlayerResponse,
+            id: currentGamePlayer.id,
+          }
+        : ({
+            ...latestGamePlayerResponse,
+            id: resolvedGamePlayerId,
+          } as GamePlayer);
+
+      if (shallowEqual(currentGamePlayer, mergedPlayer)) return;
+
+      console.log('Setting current game player: ', latestGamePlayerResponse);
+      setCurrentGamePlayer(mergedPlayer);
     }
-  }, [currentGamePlayer?.id, latestGamePlayerStatus, setCurrentGamePlayer]);
+  }, [
+    currentGamePlayer,
+    latestGamePlayerResponse,
+    resolvedGamePlayerId,
+    setCurrentGamePlayer,
+  ]);
 
   // functions to handle game moves
   const onKeyPress = (letter: string) => {
@@ -404,6 +443,13 @@ export default function Game({
   if (!currentGame) return <Text>Loading Game …</Text>;
   if (!currentPlayer) return <Text>Loading Player …</Text>;
   if (!currentGamePlayer) return <Text>Loading Game Player …</Text>;
+
+  console.log('current player ', currentPlayer);
+  console.log('current game ', currentGame);
+  console.log('current game player ', currentGamePlayer);
+  console.log('current player turn: ', isCurrentTurn);
+  console.log('current word: ', word);
+  console.log('gpid: ', currentGamePlayer.id);
 
   return (
     <>
