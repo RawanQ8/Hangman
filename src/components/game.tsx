@@ -310,8 +310,8 @@ export default function Game({
   const username = currentPlayer.username || '';
   const isCurrentTurn = currentGamePlayer.is_current_turn;
   const gameStatus = currentGame.status;
-  const gameWon = currentGamePlayer.isWinner;
-  const gameLost = currentGamePlayer.isLoser;
+  const gameWon = currentGamePlayer.is_winner;
+  const gameLost = currentGamePlayer.is_loser;
 
   // Guessing Logic: Retrieve guesses from DB
   const userGuessRecords = guesses.filter(
@@ -405,6 +405,9 @@ export default function Game({
             ...latestGamePlayerResponse,
             id: resolvedGamePlayerId,
           } as GamePlayer);
+
+      console.log('Merged player: ', mergedPlayer);
+      console.log('Comparison player: ', currentGamePlayer);
 
       if (shallowEqual(currentGamePlayer, mergedPlayer)) return;
 
