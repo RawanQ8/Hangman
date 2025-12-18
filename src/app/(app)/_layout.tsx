@@ -24,6 +24,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
+          title: 'Login',
+          tabBarIcon: ({ color }) => <FeedIcon color={color} />,
+          tabBarButtonTestID: 'feed-tab',
+        }}
+      />
+      <Tabs.Screen
+        name="home"
+        options={{
           title: 'Play',
           tabBarIcon: ({ color }) => <FeedIcon color={color} />,
           tabBarButtonTestID: 'feed-tab',

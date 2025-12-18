@@ -3,11 +3,11 @@ import React from 'react';
 import { ScrollView } from 'react-native';
 import { useSpacetimeDB } from 'spacetimedb/react';
 
-import { FocusAwareStatusBar, SafeAreaView, Text } from '@/components/ui';
+import { SafeAreaView, Text } from '@/components/ui';
 
-import Game from '../../components/game';
+import Hangman from '../../components/hangman';
 
-export default function Hangman() {
+export default function Home() {
   const params = useLocalSearchParams<{
     gameId?: string;
     playerId?: string;
@@ -24,7 +24,6 @@ export default function Hangman() {
 
   return (
     <>
-      <FocusAwareStatusBar />
       <SafeAreaView className="flex-1">
         <ScrollView
           className="scroll-m-1 px-4"
@@ -32,7 +31,7 @@ export default function Hangman() {
           keyboardShouldPersistTaps="handled"
         >
           {connected ? (
-            <Game
+            <Hangman
               //key={renderKey}
               gameId={gameIdToSend}
               playerId={playerIdToSend}

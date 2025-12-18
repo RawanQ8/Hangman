@@ -1,20 +1,15 @@
 /* eslint-disable unused-imports/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { router } from 'expo-router';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, TextInput } from 'react-native';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { useSpacetimeDB, useTable } from 'spacetimedb/react';
 
 import { Button, Text, TouchableOpacity, View } from '@/components/ui';
 import { useLatestResponse } from '@/hooks/useLatestResponse';
-import { reducers, tables } from '@/module_bindings';
+import useReducerInvoker from '@/hooks/useReducerInvoker';
+import { tables } from '@/module_bindings';
 import { useGameDataStore } from '@/store/game-data-store';
 
 import hangman0 from '../../assets/hangman/hangman0.png';
@@ -78,7 +73,7 @@ const DisplayKeyboard = ({
   ];
 
   return (
-    <View className={`mt-8 space-y-2 rounded p-4`}>
+    <View className={`mt-3 space-y-2 rounded p-4`}>
       {rows.map((row, i) => (
         <View key={`${row}_${i}`} className="flex-row justify-center space-x-2">
           {row.map((key) => (
@@ -134,7 +129,7 @@ const DisplayWrongLetters = ({
   wrongGuessedLetters: string[];
 }) => {
   return (
-    <View className="mt-4 flex-row space-x-2">
+    <View className="mt-2 flex-row">
       {wrongGuessedLetters.map((letter, index) => (
         <Text key={`wrong-${letter}-${index}`} className="text-lg">
           <Text className="text-red-700">{letter}</Text>
@@ -157,7 +152,6 @@ const DisplayLettersToGuess = ({
   );
 };
 
-type ReducerParams = Record<string, unknown>;
 const sameId = (a: any, b: any) => {
   if (a == null || b == null) return false;
   const norm = (x: any) => {
@@ -172,18 +166,7 @@ const sameId = (a: any, b: any) => {
   };
   return norm(a) === norm(b);
 };
-
-const toCamel = (name: string) =>
-  name.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
-
-const reducersLookup = reducers as Record<string, any>;
 const tablesList = Object.values(tables as Record<string, any>);
-
-const getReducerSchema = (name: string) => {
-  const camel = toCamel(name);
-  return reducersLookup[camel] ?? reducersLookup[name];
-};
-
 const shallowEqual = (
   a: Record<string, unknown> | null,
   b: Record<string, unknown> | null
@@ -197,52 +180,8 @@ const shallowEqual = (
   return true;
 };
 
-function useReducerInvoker(name: string) {
-  const schema = useMemo(() => getReducerSchema(name), [name]);
-  const { getConnection, isActive } = useSpacetimeDB();
-  const queueRef = useRef<ReducerParams[]>([]);
-
-  const run = useCallback(
-    (params: ReducerParams = {}) => {
-      console.log(`In reducer ${name} with params: `, params);
-      if (!schema) {
-        console.error(`Reducer schema not found for ${name}`);
-        return;
-      }
-      const conn = getConnection();
-      if (!conn) {
-        queueRef.current.push(params);
-        return;
-      }
-      try {
-        conn.callReducerWithParams(
-          schema.name,
-          schema.paramsType,
-          params,
-          'FullUpdate'
-        );
-      } catch (err) {
-        console.error(err);
-      }
-    },
-    [schema, getConnection, name]
-  );
-
-  useEffect(() => {
-    if (!isActive || queueRef.current.length === 0 || !schema) {
-      return;
-    }
-    const pending = queueRef.current.splice(0);
-    for (const payload of pending) {
-      run(payload);
-    }
-  }, [isActive, run, schema]);
-
-  return run;
-}
-
 // eslint-disable-next-line max-lines-per-function
-export default function Game({
+export default function Hangman({
   gameId,
   playerId,
   gpId,
@@ -491,7 +430,7 @@ export default function Game({
               You Lost 😢
             </Text>
             <View className="flex flex-row">
-              <Text className="mb-3 text-xl ">Correct Word: </Text>
+              <Text className="text-xl ">Correct Word: </Text>
               <Text className="mb-3 text-xl font-semibold text-green-800">
                 {word.toUpperCase()}
               </Text>
