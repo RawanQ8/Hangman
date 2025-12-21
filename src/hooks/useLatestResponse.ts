@@ -49,7 +49,5 @@ export function useLatestResponse<T = Game | GamePlayer | Player>(
       setLatestPayload(newestPayload);
     }
   }, [reducerName, responses]);
-
-  console.log(`Latest ${reducerName}: ${latestPayload?.id}`);
   return latestPayload;
 }

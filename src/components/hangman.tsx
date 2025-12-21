@@ -12,13 +12,13 @@ import useReducerInvoker from '@/hooks/useReducerInvoker';
 import { tables } from '@/module_bindings';
 import { useGameDataStore } from '@/store/game-data-store';
 
-import hangman0 from '../../assets/hangman/hangman0.png';
-import hangman1 from '../../assets/hangman/hangman1.png';
-import hangman2 from '../../assets/hangman/hangman2.png';
-import hangman3 from '../../assets/hangman/hangman3.png';
-import hangman4 from '../../assets/hangman/hangman4.png';
-import hangman5 from '../../assets/hangman/hangman5.png';
-import hangman6 from '../../assets/hangman/hangman6.png';
+import hangman0 from '../assets/hangman/hangman0.png';
+import hangman1 from '../assets/hangman/hangman1.png';
+import hangman2 from '../assets/hangman/hangman2.png';
+import hangman3 from '../assets/hangman/hangman3.png';
+import hangman4 from '../assets/hangman/hangman4.png';
+import hangman5 from '../assets/hangman/hangman5.png';
+import hangman6 from '../assets/hangman/hangman6.png';
 import { type GamePlayer } from '../module_bindings/game_player_type';
 import { type Game } from '../module_bindings/game_type';
 
@@ -213,7 +213,7 @@ export default function Hangman({
   const latestGamePlayerResponse =
     useLatestResponse<GamePlayer>('get_game_player');
 
-  console.log('in game:', gameId, playerId, gpId);
+  //console.log('in game:', gameId, playerId, gpId);
 
   const resolvedGameId = gameId ?? currentGame?.id;
   const resolvedPlayerId = playerId ?? currentPlayer?.id;
@@ -257,7 +257,6 @@ export default function Hangman({
     (g) => g.gameId === resolvedGameId && g.playerId === resolvedPlayerId
   );
   const guessedLetters = userGuessRecords.map((g) => g.letter);
-  console.log(guessedLetters);
 
   const correctLetters = userGuessRecords
     .filter((r) => r.isCorrect)
@@ -267,13 +266,9 @@ export default function Hangman({
     .filter((r) => !r.isCorrect)
     .map((g) => g.letter);
 
-  console.log('correct letters: ', correctLetters);
-
   wrongGuessCount = wrongLetters.length;
 
-  console.log('game status is: ', gameStatus);
-
-  const lettersToGuess = Array.from(word).map((c) => c.toUpperCase());
+  const lettersToGuess = Array.from(String(word)).map((c) => c.toUpperCase());
 
   const displayedLetters = lettersToGuess.map((letter) =>
     correctLetters.includes(letter) ? letter : '_'
@@ -287,7 +282,6 @@ export default function Hangman({
       'switch_turns',
       'join_game',
     ]);
-    console.log('new response');
     let newestRelevant: bigint | null = null;
     for (const row of responses) {
       if (!relevantReducers.has(row.reducer)) continue;
@@ -321,14 +315,22 @@ export default function Hangman({
       currentGame?.id &&
       sameId(latestGameResponse.id, currentGame.id)
     ) {
-      console.log('Setting current game: ', latestGameResponse);
       setCurrentGame(latestGameResponse);
     }
   }, [currentGame?.id, latestGameResponse, setCurrentGame]);
 
+  useEffect(() => {
+    if (gameWon)
+      if (gameWon) {
+        setShowConfetti(true);
+        setTimeout(() => {
+          setShowConfetti(false);
+        }, 3000);
+      }
+  }, [gameWon]);
+
   //update current game player
   useEffect(() => {
-    console.log('latest game player now: ', latestGamePlayerResponse);
     if (
       latestGamePlayerResponse &&
       resolvedGamePlayerId &&
@@ -345,12 +347,8 @@ export default function Hangman({
             id: resolvedGamePlayerId,
           } as GamePlayer);
 
-      console.log('Merged player: ', mergedPlayer);
-      console.log('Comparison player: ', currentGamePlayer);
-
       if (shallowEqual(currentGamePlayer, mergedPlayer)) return;
 
-      console.log('Setting current game player: ', latestGamePlayerResponse);
       setCurrentGamePlayer(mergedPlayer);
     }
   }, [
@@ -386,12 +384,14 @@ export default function Hangman({
   if (!currentPlayer) return <Text>Loading Player …</Text>;
   if (!currentGamePlayer) return <Text>Loading Game Player …</Text>;
 
-  console.log('current player ', currentPlayer);
-  console.log('current game ', currentGame);
-  console.log('current game player ', currentGamePlayer);
-  console.log('current player turn: ', isCurrentTurn);
-  console.log('current word: ', word);
-  console.log('gpid: ', currentGamePlayer.id);
+  // console.log('current player ', currentPlayer);
+  // console.log('current game ', currentGame);
+  // console.log('current game player ', currentGamePlayer);
+  // console.log('current player turn: ', isCurrentTurn);
+  // console.log('current word: ', word);
+  // console.log('gpid: ', currentGamePlayer.id);
+
+  //if (gameWon) setShowConfetti(true);
 
   return (
     <>
@@ -418,11 +418,26 @@ export default function Hangman({
               Playing as <Text className="font-semibold">{username}</Text>
             </Text>
           </View>
+          {gameStatus === 'waiting' && (
+            <View className="items-center rounded-full border border-blue-100 bg-white/80 px-3 py-1">
+              <Text className="text-sm text-blue-800">
+                <Text className="">Waiting for next player</Text>
+              </Text>
+            </View>
+          )}
         </View>
         {gameWon && (
-          <Text className="mb-3 text-xl font-bold text-blue-800">
-            Congratulations You Win!
-          </Text>
+          <>
+            <Text className="mb-3 text-xl font-bold text-blue-800">
+              Congratulations You Win!
+            </Text>
+            <View className="flex flex-row">
+              <Text className="text-xl ">Correct Word: </Text>
+              <Text className="mb-3 text-xl font-semibold text-green-800">
+                {word.toUpperCase()}
+              </Text>
+            </View>
+          </>
         )}
         {gameLost && (
           <>

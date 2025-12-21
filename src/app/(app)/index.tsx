@@ -13,6 +13,7 @@ import {
   View,
 } from '@/components/ui';
 import { useLatestResponse } from '@/hooks/useLatestResponse';
+import { useSeedWords } from '@/hooks/useSeedWords';
 import { normalizeId } from '@/lib/normalize-id';
 import { useGameDataStore } from '@/store/game-data-store';
 
@@ -29,6 +30,7 @@ export default function Login() {
   const [targetGameId, setTargetGameId] = useState<bigint | null>(null);
   const spacetime = useSpacetimeDB();
   const { isActive, identity } = spacetime;
+  useSeedWords();
 
   const connection = spacetime.getConnection?.();
   if (connection) {
@@ -65,22 +67,15 @@ export default function Login() {
   const lastGameIdRef = useRef<bigint | null>(currentGame?.id ?? null);
   const lastGpIdRef = useRef<bigint | null>(currentGamePlayer?.id ?? null);
 
-  console.log('identity: ', identity);
-  console.log('is active: ', isActive);
-
   //create a game player when necessary data is fetched
   useEffect(() => {
-    //if (!pendingCreate) return;
     if (!currentPlayer || !currentGame) return;
-
     // Ignore old responses: only act when IDs change
     if (currentPlayer.id === lastPlayerIdRef.current) {
-      console.log('old player still');
       return;
     }
     if (pendingCreate) {
       if (currentGame.id === lastGameIdRef.current) {
-        console.log('old game still');
         return;
       }
 
@@ -98,7 +93,6 @@ export default function Login() {
       const playerId = normalizeId(currentPlayer.id);
       const gameId = normalizeId(targetGameId);
       try {
-        console.log('trying to join game');
         joinGame({ gameId, playerId });
       } catch (err) {
         console.error(err);
@@ -111,7 +105,6 @@ export default function Login() {
         gameId,
         isFirst: false,
       });
-      //joinGame({ game_id: gameId, player_id: playerId });
     }
   }, [
     currentPlayer,
@@ -123,6 +116,7 @@ export default function Login() {
     pendingCreate,
   ]);
 
+  //set the current players and game when pending create or join change
   useEffect(() => {
     if (!pendingCreate && !pendingJoin) return;
     if (currentPlayer) {
@@ -149,13 +143,12 @@ export default function Login() {
     if (!currentPlayer || !currentGamePlayer) return;
     // Ignore old gamePlayer: only react to new IDs
     if (currentGamePlayer.id === lastGpIdRef.current) return;
-    console.log('fresh player and game player detected');
 
-    const playerId = normalizeId(currentPlayer.id);
-    const gpId = normalizeId(currentGamePlayer.id);
+    const playerId = String(currentPlayer.id);
+    const gpId = String(currentGamePlayer.id);
 
     if (pendingCreate && currentGame) {
-      const gameId = normalizeId(currentGame.id);
+      const gameId = String(currentGame.id);
       console.log(`creating game with ids: ${gameId}, ${playerId} and ${gpId}`);
       router.push({
         pathname: '/(app)/home',
@@ -175,9 +168,7 @@ export default function Login() {
 
     // JOIN FLOW: use the game ID typed by the user
     if (pendingJoin && targetGameId) {
-      // If GamePlayer has a gameId field, optionally ensure it matches targetGameId:
-      // if (normalizeId(currentGamePlayer.gameId) !== normalizeId(targetGameId)) return;
-      const gameId = normalizeId(targetGameId);
+      const gameId = String(targetGameId);
       console.log(`joining game with ids: ${gameId}, ${playerId} and ${gpId}`);
 
       router.push({
