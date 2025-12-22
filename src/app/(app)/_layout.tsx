@@ -20,7 +20,7 @@ export default function TabLayout() {
     return <Redirect href="/onboarding" />;
   }
   return (
-    <Tabs screenOptions={{ headerShown: false }}>
+    <Tabs>
       <Tabs.Screen
         name="index"
         options={{
@@ -35,6 +35,14 @@ export default function TabLayout() {
           title: 'Play',
           tabBarIcon: ({ color }) => <FeedIcon color={color} />,
           href: null,
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="leaderboard"
+        options={{
+          title: 'LeaderBoard',
+          tabBarIcon: ({ color }) => <FeedIcon color={color} />,
         }}
       />
     </Tabs>

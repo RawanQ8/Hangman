@@ -13,6 +13,7 @@ import {
 export default __t.object("Player", {
   id: __t.u64(),
   username: __t.string(),
+  score: __t.u32(),
 });
 
 

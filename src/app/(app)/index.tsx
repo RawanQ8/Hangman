@@ -13,7 +13,6 @@ import {
   View,
 } from '@/components/ui';
 import { useLatestResponse } from '@/hooks/useLatestResponse';
-import { useSeedWords } from '@/hooks/useSeedWords';
 import { normalizeId } from '@/lib/normalize-id';
 import { useGameDataStore } from '@/store/game-data-store';
 
@@ -29,8 +28,7 @@ export default function Login() {
   const [pendingJoin, setPendingJoin] = useState(false);
   const [targetGameId, setTargetGameId] = useState<bigint | null>(null);
   const spacetime = useSpacetimeDB();
-  const { isActive, identity } = spacetime;
-  useSeedWords();
+  const { isActive } = spacetime;
 
   const connection = spacetime.getConnection?.();
   if (connection) {
@@ -142,7 +140,10 @@ export default function Login() {
   useEffect(() => {
     if (!currentPlayer || !currentGamePlayer) return;
     // Ignore old gamePlayer: only react to new IDs
-    if (currentGamePlayer.id === lastGpIdRef.current) return;
+    if (currentGamePlayer.id === lastGpIdRef.current) {
+      console.log(`Still in old game player: ${currentGamePlayer.id}`);
+      return;
+    }
 
     const playerId = String(currentPlayer.id);
     const gpId = String(currentGamePlayer.id);

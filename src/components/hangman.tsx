@@ -81,12 +81,12 @@ const DisplayKeyboard = ({
               key={key}
               letter={key}
               status={
-                locked
-                  ? 'locked'
-                  : guessedLetters.includes(key)
-                    ? correctLetters.includes(key)
-                      ? 'present'
-                      : 'absent'
+                guessedLetters.includes(key)
+                  ? correctLetters.includes(key)
+                    ? 'present'
+                    : 'absent'
+                  : locked
+                    ? 'locked'
                     : 'default'
               }
               onPress={onKeyPress}
@@ -193,6 +193,8 @@ export default function Hangman({
   const [currentGuess, setCurrentGuess] = useState('');
   const [showConfetti, setShowConfetti] = useState(false);
   const [showKeyboard, setShowKeyboard] = useState(true);
+  const [won, setWon] = useState(false);
+  const [lost, setLost] = useState(false);
 
   const currentGame = useGameDataStore.use.currentGame();
   const currentPlayer = useGameDataStore.use.currentPlayer();
@@ -206,7 +208,7 @@ export default function Hangman({
   );
 
   const makeGuess = useReducerInvoker('make_guess');
-  const switchTurns = useReducerInvoker('switch_turns');
+  //const switchTurns = useReducerInvoker('switch_turns');
   const fetchGame = useReducerInvoker('get_game');
   const fetchGamePlayer = useReducerInvoker('get_game_player');
   const latestGameResponse = useLatestResponse<Game>('get_game');
@@ -247,7 +249,7 @@ export default function Hangman({
   //Get necessary variables from db
   const word = currentGame.word || '';
   const username = currentPlayer.username || '';
-  const isCurrentTurn = currentGamePlayer.is_current_turn;
+  //const isCurrentTurn = currentGamePlayer.is_current_turn;
   const gameStatus = currentGame.status;
   const gameWon = currentGamePlayer.is_winner;
   const gameLost = currentGamePlayer.is_loser;
@@ -320,14 +322,18 @@ export default function Hangman({
   }, [currentGame?.id, latestGameResponse, setCurrentGame]);
 
   useEffect(() => {
-    if (gameWon)
-      if (gameWon) {
-        setShowConfetti(true);
-        setTimeout(() => {
-          setShowConfetti(false);
-        }, 3000);
-      }
-  }, [gameWon]);
+    console.log(`game won is: ${gameWon} and game lost is: ${gameLost}`);
+    if (gameWon) {
+      setWon(true);
+      setShowConfetti(true);
+      setTimeout(() => {
+        setShowConfetti(false);
+      }, 3000);
+    }
+    if (gameLost) {
+      setLost(true);
+    }
+  }, [gameWon, gameLost]);
 
   //update current game player
   useEffect(() => {
@@ -360,8 +366,7 @@ export default function Hangman({
 
   // functions to handle game moves
   const onKeyPress = (letter: string) => {
-    if (!resolvedGameId || !isCurrentTurn || !(gameStatus === 'in_progress'))
-      return;
+    if (!resolvedGameId || !(gameStatus === 'in_progress')) return;
     if (gameWon || gameLost) return;
     handleGuess(letter);
   };
@@ -375,9 +380,9 @@ export default function Hangman({
         gamePlayerId: resolvedGamePlayerId,
         guess: normalizedLetter,
       });
-      switchTurns({ currentGpId: resolvedGamePlayerId });
+      //switchTurns({ currentGpId: resolvedGamePlayerId });
     },
-    [resolvedGamePlayerId, makeGuess, switchTurns, word]
+    [resolvedGamePlayerId, makeGuess, word]
   );
 
   if (!currentGame) return <Text>Loading Game …</Text>;
@@ -426,7 +431,7 @@ export default function Hangman({
             </View>
           )}
         </View>
-        {gameWon && (
+        {won && (
           <>
             <Text className="mb-3 text-xl font-bold text-blue-800">
               Congratulations You Win!
@@ -439,7 +444,7 @@ export default function Hangman({
             </View>
           </>
         )}
-        {gameLost && (
+        {lost && (
           <>
             <Text className="mb-3 text-xl font-semibold text-red-800">
               You Lost 😢
@@ -462,7 +467,7 @@ export default function Hangman({
             onKeyPress={onKeyPress}
             guessedLetters={guessedLetters}
             correctLetters={correctLetters}
-            locked={!isCurrentTurn || !(gameStatus === 'in_progress')}
+            locked={!(gameStatus === 'in_progress')}
           />
         ) : (
           <TextInput
@@ -478,12 +483,14 @@ export default function Hangman({
             }}
             autoFocus={true}
             autoCapitalize="characters"
-            editable={!gameWon && !gameLost && isCurrentTurn}
+            editable={!gameWon && !gameLost}
           />
         )}
         <Button
           className="mt-4 rounded-lg bg-blue-900"
           onPress={() => {
+            setWon(false);
+            setLost(false);
             router.push('/(app)');
           }}
         >

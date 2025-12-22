@@ -10,8 +10,7 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export default __t.object("Word", {
-  id: __t.u64(),
+export default __t.object("SeedWordInput", {
   word: __t.string(),
   score: __t.u32(),
   difficulty: __t.string(),

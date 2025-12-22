@@ -10,6 +10,10 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+import SeedWordInput from "./seed_word_input_type";
+
 export default {
-  words: __t.array(__t.string()),
+  get words() {
+    return __t.array(SeedWordInput);
+  },
 };

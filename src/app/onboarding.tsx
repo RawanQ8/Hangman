@@ -19,25 +19,24 @@ export default function Onboarding() {
       <View className="w-full flex-1">
         <Cover />
       </View>
-      <View className="justify-end ">
-        <Text className="my-3 text-center text-5xl font-bold">
-          Obytes Starter
-        </Text>
+      <View className="justify-end">
+        <Text className="my-3 text-center text-5xl font-bold">Hangman</Text>
+
         <Text className="mb-2 text-center text-lg text-gray-600">
-          The right way to build your mobile app
+          Challenge your mind. Outsmart your friends.
         </Text>
 
         <Text className="my-1 pt-6 text-left text-lg">
-          🚀 Production-ready{' '}
+          🎮 Real-time multiplayer game
         </Text>
         <Text className="my-1 text-left text-lg">
-          🥷 Developer experience + Productivity
+          🧠 Sharpen your logic and word skills
         </Text>
         <Text className="my-1 text-left text-lg">
-          🧩 Minimal code and dependencies
+          🔥 Turn-based strategy, not just guessing
         </Text>
         <Text className="my-1 text-left text-lg">
-          💪 well maintained third-party libraries
+          🏆 Compete, win, and climb the leaderboard
         </Text>
       </View>
       <SafeAreaView className="mt-6">
@@ -45,7 +44,7 @@ export default function Onboarding() {
           label="Let's Get Started "
           onPress={() => {
             setIsFirstTime(false);
-            router.replace('/login');
+            router.replace('/(app)');
           }}
         />
       </SafeAreaView>

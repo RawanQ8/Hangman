@@ -97,6 +97,8 @@ import Player from "./player_type";
 export { Player };
 import ReducerResponse from "./reducer_response_type";
 export { ReducerResponse };
+import SeedWordInput from "./seed_word_input_type";
+export { SeedWordInput };
 import Sequence from "./sequence_type";
 export { Sequence };
 import Word from "./word_type";
