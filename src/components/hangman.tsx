@@ -225,6 +225,7 @@ export default function Hangman({
   const resolvedGameId = gameId ?? currentGame?.id;
   const resolvedPlayerId = playerId ?? currentPlayer?.id;
   const resolvedGamePlayerId = gpId ?? currentGamePlayer?.id;
+  //console.log('resolved game player id: ', resolvedGamePlayerId);
   const lastResponseIdRef = useRef<bigint | null>(null);
   const lastRequestedWordIdRef = useRef<bigint | null>(null);
 
@@ -303,7 +304,6 @@ export default function Hangman({
 
   //fetch updated records
   useEffect(() => {
-    console.log('identified updates to game');
     if (!resolvedGameId || !resolvedGamePlayerId) return;
     const relevantReducers = new Set([
       'make_guess',
@@ -313,16 +313,19 @@ export default function Hangman({
     let newestRelevant: bigint | null = null;
     for (const row of responses) {
       if (!relevantReducers.has(row.reducer)) continue;
-      const payload = JSON.parse(row.payload);
-      console.log('payload: ', payload);
-      if (
-        row.reducer === 'make_guess' &&
-        BigInt(payload.gp_id) !== resolvedGamePlayerId
-      )
-        continue;
+      const payload = JSON.parse(row.payload) || '';
+      //console.log('payload: ', payload);
+
+      if (row.reducer === 'make_guess') {
+        if (BigInt(payload.gp_id) === BigInt(resolvedGamePlayerId)) {
+          //console.log(resolvedGamePlayerId);
+          //console.log('matching gpIds for paylaod: ', payload);
+        }
+      }
+
       if (row.reducer === 'join_game') {
         const toJoinId = BigInt(payload.id);
-        console.log(`${toJoinId} trying to join game: ${resolvedGameId}`);
+        //console.log(`${toJoinId} trying to join game: ${resolvedGameId}`);
         if (toJoinId !== resolvedGameId) continue;
       }
       if (newestRelevant === null || row.id > newestRelevant) {
@@ -331,8 +334,8 @@ export default function Hangman({
     }
 
     if (newestRelevant === null) return;
-    console.log('newest relevant: ', newestRelevant);
-    console.log('latest response: ', lastResponseIdRef.current);
+    //levant: ', newestRelevant);
+    //console.log('latest response: ', lastResponseIdRef.current);
 
     if (
       lastResponseIdRef.current !== null &&
@@ -492,6 +495,9 @@ export default function Hangman({
               Playing as <Text className="font-semibold">{username}</Text>
             </Text>
           </View>
+          <Text className="text-2xl font-semibold text-blue-900">
+            {resolvedGamePlayerId?.toString?.() ?? ''}
+          </Text>
           {gameStatus === 'waiting' && (
             <View className="items-center rounded-full border border-blue-100 bg-white/80 px-3 py-1">
               <Text className="text-sm text-blue-800">

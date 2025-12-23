@@ -73,18 +73,17 @@ export default function Login() {
 
   //create a game player when necessary data is fetched
   useEffect(() => {
-    if (!currentPlayer) return;
+    if (!currentPlayer || !currentGame) return;
 
     // CREATE FLOW: wait for both player and game from reducers
     if (pendingCreate) {
       if (!currentGame) return;
       // Ignore the previous response so we only act on fresh reducer outputs
-      if (
-        currentPlayer.id === lastPlayerIdRef.current &&
-        currentGame.id === lastGameIdRef.current
-      ) {
-        return;
-      }
+      const playerIsFresh = currentPlayer.id !== lastPlayerIdRef.current;
+      const gameIsFresh = currentGame.id !== lastGameIdRef.current;
+
+      // wait until BOTH are fresh
+      if (!(playerIsFresh && gameIsFresh)) return;
 
       const playerId = normalizeId(currentPlayer.id);
       const gameId = normalizeId(currentGame.id);
