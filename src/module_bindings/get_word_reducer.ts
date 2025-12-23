@@ -10,11 +10,6 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export default __t.object("Guess", {
+export default {
   id: __t.u64(),
-  gpId: __t.u64(),
-  letter: __t.string(),
-  isCorrect: __t.bool(),
-});
-
-
+};

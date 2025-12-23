@@ -31,30 +31,36 @@ export default function Login() {
   const { isActive } = spacetime;
 
   const connection = spacetime.getConnection?.();
-  if (connection) {
-    for (const tableDef of tablesList) {
-      const snake = tableDef.name;
-      const camel = tableDef.accessorName ?? snake;
-      if (snake === camel) continue;
-      const hasSnake = Object.prototype.hasOwnProperty.call(
-        connection.db,
-        snake
-      );
-      if (hasSnake) continue;
-      const descriptor = Object.getOwnPropertyDescriptor(connection.db, camel);
-      if (!descriptor) continue;
-      Object.defineProperty(connection.db, snake, descriptor);
+  useEffect(() => {
+    if (connection) {
+      for (const tableDef of tablesList) {
+        const snake = tableDef.name;
+        const camel = tableDef.accessorName ?? snake;
+        if (snake === camel) continue;
+        const hasSnake = Object.prototype.hasOwnProperty.call(
+          connection.db,
+          snake
+        );
+        if (hasSnake) continue;
+        const descriptor = Object.getOwnPropertyDescriptor(
+          connection.db,
+          camel
+        );
+        if (!descriptor) continue;
+        Object.defineProperty(connection.db, snake, descriptor);
+      }
     }
-  }
+  }, [connection]);
 
   const createPlayer = useReducerInvoker('create_player');
   const createGame = useReducerInvoker('create_game');
   const createGamePlayer = useReducerInvoker('create_game_player');
   const joinGame = useReducerInvoker('join_game');
 
-  const currentPlayer = useLatestResponse('create_player');
-  const currentGame = useLatestResponse('create_game');
-  const currentGamePlayer = useLatestResponse('create_game_player');
+  const currentPlayer = useLatestResponse('create_player') ?? null;
+  const currentGame = useLatestResponse('create_game') ?? null;
+  const currentGamePlayer = useLatestResponse('create_game_player') ?? null;
+
   const setCurrentGame = useGameDataStore((state) => state.setCurrentGame);
   const setCurrentPlayer = useGameDataStore((state) => state.setCurrentPlayer);
   const setCurrentGamePlayer = useGameDataStore(
@@ -67,13 +73,16 @@ export default function Login() {
 
   //create a game player when necessary data is fetched
   useEffect(() => {
-    if (!currentPlayer || !currentGame) return;
-    // Ignore old responses: only act when IDs change
-    if (currentPlayer.id === lastPlayerIdRef.current) {
-      return;
-    }
+    if (!currentPlayer) return;
+
+    // CREATE FLOW: wait for both player and game from reducers
     if (pendingCreate) {
-      if (currentGame.id === lastGameIdRef.current) {
+      if (!currentGame) return;
+      // Ignore the previous response so we only act on fresh reducer outputs
+      if (
+        currentPlayer.id === lastPlayerIdRef.current &&
+        currentGame.id === lastGameIdRef.current
+      ) {
         return;
       }
 
@@ -87,7 +96,16 @@ export default function Login() {
         gameId,
         isFirst: true,
       });
-    } else if (pendingJoin) {
+      return;
+    }
+
+    // JOIN FLOW: we only need the new player and the target game ID typed by the user
+    if (pendingJoin) {
+      if (!targetGameId) return;
+      if (currentPlayer.id === lastPlayerIdRef.current) {
+        return;
+      }
+
       const playerId = normalizeId(currentPlayer.id);
       const gameId = normalizeId(targetGameId);
       try {
@@ -147,6 +165,8 @@ export default function Login() {
 
     const playerId = String(currentPlayer.id);
     const gpId = String(currentGamePlayer.id);
+
+    console.log(`Moved on with gpId ${gpId}`);
 
     if (pendingCreate && currentGame) {
       const gameId = String(currentGame.id);

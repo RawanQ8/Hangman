@@ -19,6 +19,5 @@ export default __t.row({
   isHost: __t.bool(),
   isCurrentTurn: __t.bool(),
   wrongGuessCount: __t.u32(),
-  score: __t.i32(),
   joinedAt: __t.timestamp(),
 });

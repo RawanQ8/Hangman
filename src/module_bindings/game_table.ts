@@ -12,7 +12,7 @@ import {
 
 export default __t.row({
   id: __t.u64().primaryKey(),
-  word: __t.string(),
+  wordId: __t.u64(),
   status: __t.string(),
   createdAt: __t.timestamp(),
 });

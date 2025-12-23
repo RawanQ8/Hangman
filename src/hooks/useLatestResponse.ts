@@ -11,7 +11,7 @@ import { type Player } from '../module_bindings/player_type';
 export function useLatestResponse<T = Game | GamePlayer | Player>(
   reducerName: string
 ): T | null {
-  const [responses] = useTable(tables.reducerResponse);
+  const [responses] = useTable(tables.reducerResponse) ?? [];
   const lastSeenIdRef = useRef<bigint | null>(null);
   const lastReducerRef = useRef<string | null>(null);
   const [latestPayload, setLatestPayload] = useState<T | null>(null);
@@ -25,11 +25,15 @@ export function useLatestResponse<T = Game | GamePlayer | Player>(
     let newestRowId: bigint | null = null;
     let newestPayload: T | null = null;
 
-    for (const row of responses) {
+    const rows = responses ?? [];
+    if (rows.length === 0) {
+      return;
+    }
+
+    for (const row of rows) {
       if (row.reducer !== reducerName) {
         continue;
       }
-
       if (lastSeenIdRef.current !== null && row.id <= lastSeenIdRef.current) {
         continue; // already handled or stale
       }

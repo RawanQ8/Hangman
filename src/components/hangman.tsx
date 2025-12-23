@@ -6,21 +6,22 @@ import { Image, TextInput } from 'react-native';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { useSpacetimeDB, useTable } from 'spacetimedb/react';
 
+import hangman0 from '@/assets/hangman/hangman0.png';
+import hangman1 from '@/assets/hangman/hangman1.png';
+import hangman2 from '@/assets/hangman/hangman2.png';
+import hangman3 from '@/assets/hangman/hangman3.png';
+import hangman4 from '@/assets/hangman/hangman4.png';
+import hangman5 from '@/assets/hangman/hangman5.png';
+import hangman6 from '@/assets/hangman/hangman6.png';
 import { Button, Text, TouchableOpacity, View } from '@/components/ui';
 import { useLatestResponse } from '@/hooks/useLatestResponse';
 import useReducerInvoker from '@/hooks/useReducerInvoker';
 import { tables } from '@/module_bindings';
 import { useGameDataStore } from '@/store/game-data-store';
 
-import hangman0 from '../assets/hangman/hangman0.png';
-import hangman1 from '../assets/hangman/hangman1.png';
-import hangman2 from '../assets/hangman/hangman2.png';
-import hangman3 from '../assets/hangman/hangman3.png';
-import hangman4 from '../assets/hangman/hangman4.png';
-import hangman5 from '../assets/hangman/hangman5.png';
-import hangman6 from '../assets/hangman/hangman6.png';
 import { type GamePlayer } from '../module_bindings/game_player_type';
 import { type Game } from '../module_bindings/game_type';
+import { type Word } from '../module_bindings/word_type';
 
 const KeyboardKey = ({
   letter,
@@ -195,6 +196,8 @@ export default function Hangman({
   const [showKeyboard, setShowKeyboard] = useState(true);
   const [won, setWon] = useState(false);
   const [lost, setLost] = useState(false);
+  const [wordObject, setWordObject] = useState<Word | null>(null);
+  const [wordScore, setWordScore] = useState(0);
 
   const currentGame = useGameDataStore.use.currentGame();
   const currentPlayer = useGameDataStore.use.currentPlayer();
@@ -211,24 +214,36 @@ export default function Hangman({
   //const switchTurns = useReducerInvoker('switch_turns');
   const fetchGame = useReducerInvoker('get_game');
   const fetchGamePlayer = useReducerInvoker('get_game_player');
+  const fetchWord = useReducerInvoker('get_word');
+
   const latestGameResponse = useLatestResponse<Game>('get_game');
   const latestGamePlayerResponse =
     useLatestResponse<GamePlayer>('get_game_player');
-
+  const latestWordResponse = useLatestResponse<Word>('get_word');
   //console.log('in game:', gameId, playerId, gpId);
 
   const resolvedGameId = gameId ?? currentGame?.id;
   const resolvedPlayerId = playerId ?? currentPlayer?.id;
   const resolvedGamePlayerId = gpId ?? currentGamePlayer?.id;
   const lastResponseIdRef = useRef<bigint | null>(null);
+  const lastRequestedWordIdRef = useRef<bigint | null>(null);
 
   const spacetime = useSpacetimeDB();
 
+  // When switching games/players, clear transient UI state and reset reducer tracking
   useEffect(() => {
-    const connection = spacetime.getConnection?.();
+    setWon(false);
+    setLost(false);
+    setShowConfetti(false);
+    lastResponseIdRef.current = null;
+    lastRequestedWordIdRef.current = null;
+    setWordObject(null);
+  }, [resolvedGameId, resolvedGamePlayerId]);
 
+  const connection = spacetime.getConnection?.();
+
+  useEffect(() => {
     if (!connection) return;
-
     for (const tableDef of tablesList) {
       const snake = tableDef.name;
       const camel = tableDef.accessorName ?? snake;
@@ -240,23 +255,33 @@ export default function Hangman({
 
       Object.defineProperty(connection.db, snake, descriptor);
     }
-  }, [spacetime]);
+  }, [connection, spacetime]);
 
-  const [responses = []] = useTable(tables.reducerResponse) ?? [];
-  const [guesses = []] = useTable(tables.guess) ?? [];
+  const [responses] = useTable(tables.reducerResponse) ?? [];
+  const [guesses] = useTable(tables.guess) ?? [];
+
   let wrongGuessCount = 0;
 
   //Get necessary variables from db
-  const word = currentGame.word || '';
-  const username = currentPlayer.username || '';
+  const wordId: bigint = currentGame?.word_id ?? 0n;
+  const username = currentPlayer?.username ?? '';
+  const word =
+    wordObject && wordId !== 0n && sameId(wordObject.id, wordId)
+      ? wordObject.word
+      : '';
+
   //const isCurrentTurn = currentGamePlayer.is_current_turn;
-  const gameStatus = currentGame.status;
-  const gameWon = currentGamePlayer.is_winner;
-  const gameLost = currentGamePlayer.is_loser;
+  const gameStatus = currentGame?.status ?? '';
+  const isCurrentGamePlayer = sameId(
+    currentGamePlayer?.id,
+    resolvedGamePlayerId
+  );
+  const gameWon = isCurrentGamePlayer ? currentGamePlayer?.is_winner : false;
+  const gameLost = isCurrentGamePlayer ? currentGamePlayer?.is_loser : false;
 
   // Guessing Logic: Retrieve guesses from DB
   const userGuessRecords = guesses.filter(
-    (g) => g.gameId === resolvedGameId && g.playerId === resolvedPlayerId
+    (g) => g.gpId === resolvedGamePlayerId
   );
   const guessedLetters = userGuessRecords.map((g) => g.letter);
 
@@ -278,15 +303,27 @@ export default function Hangman({
 
   //fetch updated records
   useEffect(() => {
+    console.log('identified updates to game');
     if (!resolvedGameId || !resolvedGamePlayerId) return;
     const relevantReducers = new Set([
       'make_guess',
-      'switch_turns',
+      'switch_turn',
       'join_game',
     ]);
     let newestRelevant: bigint | null = null;
     for (const row of responses) {
       if (!relevantReducers.has(row.reducer)) continue;
+      const payload = JSON.parse(row.payload);
+      if (
+        row.reducer === 'make_guess' &&
+        payload.gp_id !== resolvedGamePlayerId
+      )
+        continue;
+      if (row.reducer === 'join_game') {
+        const toJoinId = BigInt(payload.id);
+        console.log(`${toJoinId} trying to join game: ${resolvedGameId}`);
+        if (toJoinId !== resolvedGameId) continue;
+      }
       if (newestRelevant === null || row.id > newestRelevant) {
         newestRelevant = row.id;
       }
@@ -300,6 +337,7 @@ export default function Hangman({
       return;
 
     lastResponseIdRef.current = newestRelevant;
+    console.log('FETCHING GAME AND PLAYER');
     fetchGame({ id: resolvedGameId });
     fetchGamePlayer({ gpId: resolvedGamePlayerId });
   }, [
@@ -308,6 +346,7 @@ export default function Hangman({
     resolvedGamePlayerId,
     fetchGame,
     fetchGamePlayer,
+    wordId,
   ]);
 
   //update current game
@@ -317,6 +356,7 @@ export default function Hangman({
       currentGame?.id &&
       sameId(latestGameResponse.id, currentGame.id)
     ) {
+      console.log('game updated to: ', latestGameResponse);
       setCurrentGame(latestGameResponse);
     }
   }, [currentGame?.id, latestGameResponse, setCurrentGame]);
@@ -328,11 +368,16 @@ export default function Hangman({
       setShowConfetti(true);
       setTimeout(() => {
         setShowConfetti(false);
+        //setWon(false);
       }, 3000);
     }
     if (gameLost) {
       setLost(true);
+      // setTimeout(() => {
+      //   //setLost(false);
+      // }, 3000);
     }
+    console.log(`Won state is: ${won} and lost state is: ${gameLost}`);
   }, [gameWon, gameLost]);
 
   //update current game player
@@ -342,20 +387,7 @@ export default function Hangman({
       resolvedGamePlayerId &&
       sameId(latestGamePlayerResponse.id, resolvedGamePlayerId)
     ) {
-      const mergedPlayer = currentGamePlayer
-        ? {
-            ...currentGamePlayer,
-            ...latestGamePlayerResponse,
-            id: currentGamePlayer.id,
-          }
-        : ({
-            ...latestGamePlayerResponse,
-            id: resolvedGamePlayerId,
-          } as GamePlayer);
-
-      if (shallowEqual(currentGamePlayer, mergedPlayer)) return;
-
-      setCurrentGamePlayer(mergedPlayer);
+      setCurrentGamePlayer(latestGamePlayerResponse);
     }
   }, [
     currentGamePlayer,
@@ -363,6 +395,39 @@ export default function Hangman({
     resolvedGamePlayerId,
     setCurrentGamePlayer,
   ]);
+
+  useEffect(() => {
+    if (!wordId || wordId === 0n) {
+      setWordObject(null);
+      lastRequestedWordIdRef.current = null;
+      return;
+    }
+    if (wordObject && sameId(wordObject.id, wordId)) return;
+    if (
+      lastRequestedWordIdRef.current &&
+      sameId(lastRequestedWordIdRef.current, wordId)
+    )
+      return;
+    console.log('trying to fetch word with id: ', wordId);
+    lastRequestedWordIdRef.current = wordId;
+    fetchWord({ id: BigInt(wordId) });
+  }, [fetchWord, wordId, wordObject]);
+
+  useEffect(() => {
+    if (!latestWordResponse) return;
+    if (!wordId || wordId === 0n) return;
+    if (!sameId(latestWordResponse.id, wordId)) return;
+    setWordObject(latestWordResponse);
+  }, [latestWordResponse, setWordObject, wordId]);
+
+  useEffect(() => {
+    if (wordObject) {
+      console.log(`word object is: `, wordObject);
+      setWordScore(wordObject.score);
+      console.log('word score: ', wordObject.score);
+    }
+    return;
+  }, [wordObject]);
 
   // functions to handle game moves
   const onKeyPress = (letter: string) => {
@@ -436,6 +501,9 @@ export default function Hangman({
             <Text className="mb-3 text-xl font-bold text-blue-800">
               Congratulations You Win!
             </Text>
+            <Text className="mb-3 text-lg font-bold text-black">
+              You earned {wordScore} points!
+            </Text>
             <View className="flex flex-row">
               <Text className="text-xl ">Correct Word: </Text>
               <Text className="mb-3 text-xl font-semibold text-green-800">
@@ -483,7 +551,7 @@ export default function Hangman({
             }}
             autoFocus={true}
             autoCapitalize="characters"
-            editable={!gameWon && !gameLost}
+            editable={!won && !lost}
           />
         )}
         <Button
@@ -495,7 +563,7 @@ export default function Hangman({
           }}
         >
           <Text className="text-white">
-            {gameWon || gameLost ? 'New Game' : 'Start Over'}
+            {won || lost ? 'New Game' : 'Start Over'}
           </Text>
         </Button>
       </View>

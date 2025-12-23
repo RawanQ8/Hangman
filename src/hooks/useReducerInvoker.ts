@@ -24,6 +24,7 @@ export default function useReducerInvoker(name: string) {
 
   const run = useCallback(
     (params: ReducerParams = {}) => {
+      console.log(`In reducer ${name} with params: `, params);
       if (!schema) {
         console.error(`Reducer schema not found for ${name}`);
         return;
@@ -33,13 +34,17 @@ export default function useReducerInvoker(name: string) {
         queueRef.current.push(params);
         return;
       }
-      conn.callReducerWithParams(
-        schema.name,
-        schema.paramsType,
-        params,
-        'FullUpdate'
-      );
-      console.log('In reducer with: ', name);
+      try {
+        conn.callReducerWithParams(
+          schema.name,
+          schema.paramsType,
+          params,
+          'FullUpdate'
+        );
+      } catch (err) {
+        console.log(params);
+        console.error(err);
+      }
     },
     [schema, getConnection, name]
   );

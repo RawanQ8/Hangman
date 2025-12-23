@@ -12,8 +12,7 @@ import {
 
 export default __t.row({
   id: __t.u64().primaryKey(),
-  gameId: __t.u64(),
-  playerId: __t.u64(),
+  gpId: __t.u64(),
   letter: __t.string(),
   isCorrect: __t.bool(),
 });

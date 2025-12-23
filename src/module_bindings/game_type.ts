@@ -12,7 +12,7 @@ import {
 
 export default __t.object("Game", {
   id: __t.u64(),
-  word: __t.string(),
+  wordId: __t.u64(),
   status: __t.string(),
   createdAt: __t.timestamp(),
 });

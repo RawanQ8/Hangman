@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
 
-import { Cover } from '@/components/cover';
+import { Cover } from '@/components/new-cover';
 import {
   Button,
   FocusAwareStatusBar,
@@ -10,6 +10,7 @@ import {
   View,
 } from '@/components/ui';
 import { useIsFirstTime } from '@/lib/hooks';
+
 export default function Onboarding() {
   const [_, setIsFirstTime] = useIsFirstTime();
   const router = useRouter();
