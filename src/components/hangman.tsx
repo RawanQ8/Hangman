@@ -314,9 +314,10 @@ export default function Hangman({
     for (const row of responses) {
       if (!relevantReducers.has(row.reducer)) continue;
       const payload = JSON.parse(row.payload);
+      console.log('payload: ', payload);
       if (
         row.reducer === 'make_guess' &&
-        payload.gp_id !== resolvedGamePlayerId
+        BigInt(payload.gp_id) !== resolvedGamePlayerId
       )
         continue;
       if (row.reducer === 'join_game') {
@@ -330,13 +331,16 @@ export default function Hangman({
     }
 
     if (newestRelevant === null) return;
+    console.log('newest relevant: ', newestRelevant);
+    console.log('latest response: ', lastResponseIdRef.current);
+
     if (
       lastResponseIdRef.current !== null &&
       newestRelevant <= lastResponseIdRef.current
     )
       return;
-
     lastResponseIdRef.current = newestRelevant;
+
     console.log('FETCHING GAME AND PLAYER');
     fetchGame({ id: resolvedGameId });
     fetchGamePlayer({ gpId: resolvedGamePlayerId });
