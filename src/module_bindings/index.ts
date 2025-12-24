@@ -51,6 +51,10 @@ import GetGamePlayer from "./get_game_player_reducer";
 export { GetGamePlayer };
 import GetGameStatus from "./get_game_status_reducer";
 export { GetGameStatus };
+import GetLeaderboard from "./get_leaderboard_reducer";
+export { GetLeaderboard };
+import GetOrCreatePlayer from "./get_or_create_player_reducer";
+export { GetOrCreatePlayer };
 import GetPlayer from "./get_player_reducer";
 export { GetPlayer };
 import GetPlayerGuesses from "./get_player_guesses_reducer";
@@ -199,6 +203,8 @@ const reducersSchema = __reducers(
   __reducerSchema("get_game_guesses", GetGameGuesses),
   __reducerSchema("get_game_player", GetGamePlayer),
   __reducerSchema("get_game_status", GetGameStatus),
+  __reducerSchema("get_leaderboard", GetLeaderboard),
+  __reducerSchema("get_or_create_player", GetOrCreatePlayer),
   __reducerSchema("get_player", GetPlayer),
   __reducerSchema("get_player_guesses", GetPlayerGuesses),
   __reducerSchema("get_player_status", GetPlayerStatus),

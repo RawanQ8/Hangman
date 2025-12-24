@@ -14,4 +14,5 @@ export default __t.row({
   id: __t.u64().primaryKey(),
   username: __t.string(),
   score: __t.u32(),
+  createdBy: __t.identity(),
 });

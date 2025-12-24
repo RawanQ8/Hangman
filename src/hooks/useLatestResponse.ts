@@ -1,5 +1,6 @@
 /* eslint-disable unicorn/filename-case */
 import { useEffect, useRef, useState } from 'react';
+import { type Identity } from 'spacetimedb';
 import { useTable } from 'spacetimedb/react';
 
 import { tables } from '@/module_bindings';
@@ -9,7 +10,8 @@ import { type Game } from '../module_bindings/game_type';
 import { type Player } from '../module_bindings/player_type';
 
 export function useLatestResponse<T = Game | GamePlayer | Player>(
-  reducerName: string
+  reducerName: string,
+  currentIdentity: Identity | null
 ): T | null {
   const [responses] = useTable(tables.reducerResponse) ?? [];
   const lastSeenIdRef = useRef<bigint | null>(null);
@@ -34,6 +36,13 @@ export function useLatestResponse<T = Game | GamePlayer | Player>(
       if (row.reducer !== reducerName) {
         continue;
       }
+      if (
+        reducerName === 'get_or_create_player ' &&
+        row.identity !== currentIdentity
+      ) {
+        console.log('wrong identity');
+        continue;
+      }
       if (lastSeenIdRef.current !== null && row.id <= lastSeenIdRef.current) {
         continue; // already handled or stale
       }
@@ -52,6 +61,6 @@ export function useLatestResponse<T = Game | GamePlayer | Player>(
       lastSeenIdRef.current = newestRowId;
       setLatestPayload(newestPayload);
     }
-  }, [reducerName, responses]);
+  }, [currentIdentity, reducerName, responses]);
   return latestPayload;
 }

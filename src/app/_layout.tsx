@@ -17,6 +17,7 @@ import { APIProvider } from '@/api';
 import { hydrateAuth, loadSelectedTheme } from '@/lib';
 import { getItem, setItem } from '@/lib/storage';
 import { useThemeConfig } from '@/lib/use-theme-config';
+import { useSessionStore } from '@/store/session-store';
 
 import { DbConnection, type ErrorContext } from '../module_bindings';
 
@@ -44,6 +45,9 @@ const onConnect = (conn: DbConnection, identity: Identity, token: string) => {
   // Store auth token so we can reconnect with same identity
   // Persist the auth token using native storage (localStorage is not available in RN)
   setItem('auth_token', token);
+  const { setIdentity, setConnection } = useSessionStore.getState();
+  setIdentity(identity);
+  setConnection(conn);
 };
 
 const onDisconnect = () => {

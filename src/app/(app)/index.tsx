@@ -2,6 +2,7 @@
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
+import ToggleSwitch from 'toggle-switch-react-native';
 
 import type { CreateFormProps, JoinFormProps } from '@/components/login-form';
 import { JoinGameForm, NewGameForm } from '@/components/login-form';
@@ -15,6 +16,7 @@ import {
 import { useLatestResponse } from '@/hooks/useLatestResponse';
 import { normalizeId } from '@/lib/normalize-id';
 import { useGameDataStore } from '@/store/game-data-store';
+import { useSessionStore } from '@/store/session-store';
 
 import useReducerInvoker from '../../hooks/useReducerInvoker';
 import { tables } from '../../module_bindings';
@@ -26,11 +28,14 @@ export default function Login() {
   const [mode, setMode] = useState<'create' | 'join'>('create');
   const [pendingCreate, setPendingCreate] = useState(false);
   const [pendingJoin, setPendingJoin] = useState(false);
+  const [samePlayer, setSamePlayer] = useState(false);
   const [targetGameId, setTargetGameId] = useState<bigint | null>(null);
   const spacetime = useSpacetimeDB();
   const { isActive } = spacetime;
 
   const connection = spacetime.getConnection?.();
+  const identity = useSessionStore((s) => s.identity);
+
   useEffect(() => {
     if (connection) {
       for (const tableDef of tablesList) {
@@ -56,10 +61,15 @@ export default function Login() {
   const createGame = useReducerInvoker('create_game');
   const createGamePlayer = useReducerInvoker('create_game_player');
   const joinGame = useReducerInvoker('join_game');
+  const getOrCreatePlayer = useReducerInvoker('get_or_create_player');
 
-  const currentPlayer = useLatestResponse('create_player') ?? null;
-  const currentGame = useLatestResponse('create_game') ?? null;
-  const currentGamePlayer = useLatestResponse('create_game_player') ?? null;
+  const newPlayer = useLatestResponse('get_or_create_player', identity) ?? null;
+  const oldPlayer = useLatestResponse('create_player', identity) ?? null;
+
+  const currentGame = useLatestResponse('create_game', identity) ?? null;
+  const currentGamePlayer =
+    useLatestResponse('create_game_player', identity) ?? null;
+  const currentPlayer = samePlayer ? newPlayer : oldPlayer;
 
   const setCurrentGame = useGameDataStore((state) => state.setCurrentGame);
   const setCurrentPlayer = useGameDataStore((state) => state.setCurrentPlayer);
@@ -83,7 +93,14 @@ export default function Login() {
       const gameIsFresh = currentGame.id !== lastGameIdRef.current;
 
       // wait until BOTH are fresh
-      if (!(playerIsFresh && gameIsFresh)) return;
+      if (!samePlayer) {
+        if (!(playerIsFresh && gameIsFresh)) return;
+      }
+
+      if (samePlayer) {
+        if (!gameIsFresh) return;
+        console.log('sticking with same user: ', currentPlayer.username);
+      }
 
       const playerId = normalizeId(currentPlayer.id);
       const gameId = normalizeId(currentGame.id);
@@ -101,8 +118,13 @@ export default function Login() {
     // JOIN FLOW: we only need the new player and the target game ID typed by the user
     if (pendingJoin) {
       if (!targetGameId) return;
-      if (currentPlayer.id === lastPlayerIdRef.current) {
-        return;
+      if (!samePlayer) {
+        if (currentPlayer.id === lastPlayerIdRef.current) {
+          return;
+        }
+      }
+      if (samePlayer) {
+        console.log('joining with old player: ', currentPlayer?.username);
       }
 
       const playerId = normalizeId(currentPlayer.id);
@@ -129,6 +151,8 @@ export default function Login() {
     targetGameId,
     joinGame,
     pendingCreate,
+    samePlayer,
+    identity,
   ]);
 
   //set the current players and game when pending create or join change
@@ -229,8 +253,8 @@ export default function Login() {
 
     const username = data.name.trim();
     console.log('username:', username);
-
-    createPlayer({ username });
+    if (!samePlayer) createPlayer({ username });
+    if (samePlayer) getOrCreatePlayer();
     createGame();
   };
 
@@ -252,7 +276,8 @@ export default function Login() {
     setTargetGameId(gameId);
     console.log('username:', username);
 
-    createPlayer({ username });
+    if (!samePlayer) createPlayer({ username });
+    if (samePlayer) getOrCreatePlayer();
   };
 
   return (
@@ -284,6 +309,12 @@ export default function Login() {
         ) : (
           <JoinGameForm onSubmit={onJoinGame} />
         )}
+
+        <ToggleSwitch
+          isOn={samePlayer}
+          label="Same Player"
+          onToggle={() => setSamePlayer(!samePlayer)}
+        />
 
         {/* Legacy email/password login kept for reference */}
         {/* <LoginForm onSubmit={onSubmit} isNewGame={false} /> */}

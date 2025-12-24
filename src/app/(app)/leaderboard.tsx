@@ -1,12 +1,12 @@
-import React, { useMemo } from 'react';
-import { useSpacetimeDB, useTable } from 'spacetimedb/react';
+import React, { useEffect, useMemo } from 'react';
+import { useSpacetimeDB } from 'spacetimedb/react';
 
 import { SafeAreaView, ScrollView, Text, View } from '@/components/ui';
-import { normalizeId } from '@/lib/normalize-id';
-import { tables } from '@/module_bindings';
+import { useLatestResponse } from '@/hooks/useLatestResponse';
+import useReducerInvoker from '@/hooks/useReducerInvoker';
 
-type PlayerRow = {
-  id: bigint | number | string;
+type LeaderboardEntry = {
+  id: string | number | bigint;
   username: string;
   score: number;
 };
@@ -15,14 +15,10 @@ function LeaderboardRow({
   rank,
   username,
   score,
-}: {
-  rank: number;
-  username: string;
-  score: number;
-}) {
+}: LeaderboardEntry & { rank: number }) {
   return (
     <View className="mb-3 flex-row items-center justify-between rounded-2xl border border-blue-100 bg-white/90 px-4 py-3 shadow-sm shadow-blue-100">
-      <View className="mr-3 size-10 items-center justify-center rounded-full bg-blue-100">
+      <View className="mr-3 size-10 items-center justify-center rounded-full">
         <Text className="text-sm font-semibold text-blue-900">#{rank}</Text>
       </View>
       <View className="flex-1">
@@ -36,31 +32,44 @@ function LeaderboardRow({
   );
 }
 
+// eslint-disable-next-line max-lines-per-function
 export default function Leaderboard() {
   const { isActive } = useSpacetimeDB();
-  const [players] = useTable(tables.player) ?? [];
+  const getLeaderboard = useReducerInvoker('get_leaderboard');
+  const latestLeaderboard = useLatestResponse<any>('get_leaderboard', null);
 
-  const leaderboard = useMemo(() => {
-    const rows = players ?? [];
-    return [...rows]
-      .sort((a, b) => {
-        const scoreDiff = Number(b.score ?? 0) - Number(a.score ?? 0);
-        if (scoreDiff !== 0) return scoreDiff;
-        const aId = normalizeId(a.id);
-        const bId = normalizeId(b.id);
-        if (aId === bId) return 0;
-        return aId < bId ? -1 : 1;
-      })
-      .slice(0, 10);
-  }, [players]);
+  useEffect(() => {
+    if (isActive) {
+      getLeaderboard();
+    }
+  }, [getLeaderboard, isActive]);
+
+  const leaderboard: LeaderboardEntry[] = useMemo(() => {
+    const raw =
+      (Array.isArray(latestLeaderboard) && latestLeaderboard) ||
+      (latestLeaderboard &&
+        Array.isArray((latestLeaderboard as any).leaderboard) &&
+        (latestLeaderboard as any).leaderboard) ||
+      (latestLeaderboard &&
+        Array.isArray((latestLeaderboard as any).players) &&
+        (latestLeaderboard as any).players) ||
+      [];
+
+    // Reducer already returns sorted top 10; just normalize fields for rendering.
+    return raw.map((entry: any, idx: number) => ({
+      id: entry.id ?? idx,
+      username: entry.username ?? 'Unknown',
+      score: Number(entry.score ?? 0),
+    }));
+  }, [latestLeaderboard]);
 
   return (
-    <SafeAreaView className="flex-1 bg-blue-50">
+    <SafeAreaView className="flex-1">
       <ScrollView
         className="flex-1 px-4"
         contentContainerStyle={{ paddingVertical: 20, flexGrow: 1 }}
       >
-        <View className="overflow-hidden rounded-3xl border border-blue-200 bg-white/90 p-5 shadow-md shadow-blue-100">
+        <View className="overflow-hidden rounded-3xl border border-blue-200 bg-blue-50 p-5 shadow-md shadow-blue-100">
           <Text className="text-xs uppercase tracking-[3px] text-blue-500">
             Standings
           </Text>
@@ -80,7 +89,7 @@ export default function Leaderboard() {
         </View>
 
         {leaderboard.length === 0 ? (
-          <View className="mt-10 items-center rounded-3xl border border-blue-200 bg-white/90 p-8 shadow-sm shadow-blue-100">
+          <View className="mt-10 items-center rounded-3xl border border-blue-200 bg-blue-100 p-8 shadow-sm shadow-blue-100">
             <Text className="text-xl font-semibold text-blue-900">
               No scores yet
             </Text>
@@ -89,13 +98,14 @@ export default function Leaderboard() {
             </Text>
           </View>
         ) : (
-          <View className="mt-6 rounded-3xl border border-blue-200 bg-white/90 p-5 shadow-sm shadow-blue-100">
+          <View className="mt-6 rounded-3xl border border-blue-200 bg-blue-50 p-5 shadow-sm shadow-blue-100">
             {leaderboard.map((player, index) => (
               <LeaderboardRow
                 key={String(player.id)}
                 rank={index + 1}
                 username={player.username}
                 score={player.score}
+                id={player.id}
               />
             ))}
           </View>

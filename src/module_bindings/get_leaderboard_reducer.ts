@@ -10,11 +10,4 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export default __t.object("Player", {
-  id: __t.u64(),
-  username: __t.string(),
-  score: __t.u32(),
-  createdBy: __t.identity(),
-});
-
-
+export default {};
