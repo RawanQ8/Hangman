@@ -51,8 +51,6 @@ import GetGamePlayer from "./get_game_player_reducer";
 export { GetGamePlayer };
 import GetGameStatus from "./get_game_status_reducer";
 export { GetGameStatus };
-import GetLeaderboard from "./get_leaderboard_reducer";
-export { GetLeaderboard };
 import GetOrCreatePlayer from "./get_or_create_player_reducer";
 export { GetOrCreatePlayer };
 import GetPlayer from "./get_player_reducer";
@@ -83,6 +81,8 @@ import GamePlayerRow from "./game_player_table";
 export { GamePlayerRow };
 import GuessRow from "./guess_table";
 export { GuessRow };
+import LeaderboardRow from "./leaderboard_table";
+export { LeaderboardRow };
 import PlayerRow from "./player_table";
 export { PlayerRow };
 import ReducerResponseRow from "./reducer_response_table";
@@ -99,6 +99,8 @@ import GamePlayer from "./game_player_type";
 export { GamePlayer };
 import Guess from "./guess_type";
 export { Guess };
+import Leaderboard from "./leaderboard_type";
+export { Leaderboard };
 import Player from "./player_type";
 export { Player };
 import ReducerResponse from "./reducer_response_type";
@@ -145,6 +147,17 @@ const tablesSchema = __schema(
       { name: 'guess_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, GuessRow),
+  __table({
+    name: 'leaderboard',
+    indexes: [
+      { name: 'rank', algorithm: 'btree', columns: [
+        'rank',
+      ] },
+    ],
+    constraints: [
+      { name: 'leaderboard_rank_key', constraint: 'unique', columns: ['rank'] },
+    ],
+  }, LeaderboardRow),
   __table({
     name: 'player',
     indexes: [
@@ -203,7 +216,6 @@ const reducersSchema = __reducers(
   __reducerSchema("get_game_guesses", GetGameGuesses),
   __reducerSchema("get_game_player", GetGamePlayer),
   __reducerSchema("get_game_status", GetGameStatus),
-  __reducerSchema("get_leaderboard", GetLeaderboard),
   __reducerSchema("get_or_create_player", GetOrCreatePlayer),
   __reducerSchema("get_player", GetPlayer),
   __reducerSchema("get_player_guesses", GetPlayerGuesses),

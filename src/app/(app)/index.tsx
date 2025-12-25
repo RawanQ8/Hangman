@@ -19,9 +19,6 @@ import { useGameDataStore } from '@/store/game-data-store';
 import { useSessionStore } from '@/store/session-store';
 
 import useReducerInvoker from '../../hooks/useReducerInvoker';
-import { tables } from '../../module_bindings';
-
-const tablesList = Object.values(tables as Record<string, any>);
 
 export default function Login() {
   const router = useRouter();
@@ -33,29 +30,7 @@ export default function Login() {
   const spacetime = useSpacetimeDB();
   const { isActive } = spacetime;
 
-  const connection = spacetime.getConnection?.();
   const identity = useSessionStore((s) => s.identity);
-
-  useEffect(() => {
-    if (connection) {
-      for (const tableDef of tablesList) {
-        const snake = tableDef.name;
-        const camel = tableDef.accessorName ?? snake;
-        if (snake === camel) continue;
-        const hasSnake = Object.prototype.hasOwnProperty.call(
-          connection.db,
-          snake
-        );
-        if (hasSnake) continue;
-        const descriptor = Object.getOwnPropertyDescriptor(
-          connection.db,
-          camel
-        );
-        if (!descriptor) continue;
-        Object.defineProperty(connection.db, snake, descriptor);
-      }
-    }
-  }, [connection]);
 
   const createPlayer = useReducerInvoker('create_player');
   const createGame = useReducerInvoker('create_game');

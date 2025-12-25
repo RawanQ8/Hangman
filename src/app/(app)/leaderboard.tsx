@@ -1,15 +1,9 @@
-import React, { useEffect, useMemo } from 'react';
-import { useSpacetimeDB } from 'spacetimedb/react';
+import React from 'react';
+import { useSpacetimeDB, useTable } from 'spacetimedb/react';
 
 import { SafeAreaView, ScrollView, Text, View } from '@/components/ui';
-import { useLatestResponse } from '@/hooks/useLatestResponse';
-import useReducerInvoker from '@/hooks/useReducerInvoker';
-
-type LeaderboardEntry = {
-  id: string | number | bigint;
-  username: string;
-  score: number;
-};
+import { tables } from '@/module_bindings';
+import { type LeaderboardEntry } from '@/types';
 
 function LeaderboardRow({
   rank,
@@ -32,36 +26,10 @@ function LeaderboardRow({
   );
 }
 
-// eslint-disable-next-line max-lines-per-function
 export default function Leaderboard() {
   const { isActive } = useSpacetimeDB();
-  const getLeaderboard = useReducerInvoker('get_leaderboard');
-  const latestLeaderboard = useLatestResponse<any>('get_leaderboard', null);
 
-  useEffect(() => {
-    if (isActive) {
-      getLeaderboard();
-    }
-  }, [getLeaderboard, isActive]);
-
-  const leaderboard: LeaderboardEntry[] = useMemo(() => {
-    const raw =
-      (Array.isArray(latestLeaderboard) && latestLeaderboard) ||
-      (latestLeaderboard &&
-        Array.isArray((latestLeaderboard as any).leaderboard) &&
-        (latestLeaderboard as any).leaderboard) ||
-      (latestLeaderboard &&
-        Array.isArray((latestLeaderboard as any).players) &&
-        (latestLeaderboard as any).players) ||
-      [];
-
-    // Reducer already returns sorted top 10; just normalize fields for rendering.
-    return raw.map((entry: any, idx: number) => ({
-      id: entry.id ?? idx,
-      username: entry.username ?? 'Unknown',
-      score: Number(entry.score ?? 0),
-    }));
-  }, [latestLeaderboard]);
+  const [leaderboard] = useTable(tables.leaderboard) ?? [[]];
 
   return (
     <SafeAreaView className="flex-1">
@@ -99,13 +67,14 @@ export default function Leaderboard() {
           </View>
         ) : (
           <View className="mt-6 rounded-3xl border border-blue-200 bg-blue-50 p-5 shadow-sm shadow-blue-100">
-            {leaderboard.map((player, index) => (
+            {leaderboard.map((winner, index) => (
               <LeaderboardRow
-                key={String(player.id)}
+                key={String(winner.playerId ?? '')}
                 rank={index + 1}
-                username={player.username}
-                score={player.score}
-                id={player.id}
+                identity={null}
+                username={winner.username}
+                score={winner.score}
+                id={winner.playerId}
               />
             ))}
           </View>

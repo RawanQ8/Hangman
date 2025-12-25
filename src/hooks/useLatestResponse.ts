@@ -9,7 +9,7 @@ import { type GamePlayer } from '../module_bindings/game_player_type';
 import { type Game } from '../module_bindings/game_type';
 import { type Player } from '../module_bindings/player_type';
 
-export function useLatestResponse<T = Game | GamePlayer | Player>(
+export function useLatestResponse<T = Game | GamePlayer | Player | Player[]>(
   reducerName: string,
   currentIdentity: Identity | null
 ): T | null {
@@ -26,6 +26,14 @@ export function useLatestResponse<T = Game | GamePlayer | Player>(
 
     let newestRowId: bigint | null = null;
     let newestPayload: T | null = null;
+
+    if (reducerName === 'get_leaderboard') {
+      //console.log('getting leaderboard data');
+      console.log(
+        'responses: ',
+        responses.filter((r) => r.reducer)
+      );
+    }
 
     const rows = responses ?? [];
     if (rows.length === 0) {

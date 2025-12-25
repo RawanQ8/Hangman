@@ -5,13 +5,13 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import FlashMessage from 'react-native-flash-message';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { type Identity } from 'spacetimedb';
-import { SpacetimeDBProvider } from 'spacetimedb/react';
+import { SpacetimeDBProvider, useSpacetimeDB } from 'spacetimedb/react';
 
 import { APIProvider } from '@/api';
 import { hydrateAuth, loadSelectedTheme } from '@/lib';
@@ -19,7 +19,11 @@ import { getItem, setItem } from '@/lib/storage';
 import { useThemeConfig } from '@/lib/use-theme-config';
 import { useSessionStore } from '@/store/session-store';
 
-import { DbConnection, type ErrorContext } from '../module_bindings';
+import {
+  DbConnection,
+  type ErrorContext,
+  tables,
+} from '../module_bindings';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -80,6 +84,31 @@ const connectionBuilder = DbConnection.builder()
   .onDisconnect(onDisconnect)
   .onConnectError(onConnectError);
 
+const tablesList = Object.values(tables as Record<string, any>);
+
+function TableAccessorsSync() {
+  const spacetime = useSpacetimeDB();
+
+  useEffect(() => {
+    const connection = spacetime.getConnection?.();
+    if (!connection) return;
+
+    for (const tableDef of tablesList) {
+      const snake = tableDef.name;
+      const camel = tableDef.accessorName ?? snake;
+      if (snake === camel) continue;
+      if (Object.prototype.hasOwnProperty.call(connection.db, snake)) continue;
+
+      const descriptor = Object.getOwnPropertyDescriptor(connection.db, camel);
+      if (!descriptor) continue;
+
+      Object.defineProperty(connection.db, snake, descriptor);
+    }
+  }, [spacetime, spacetime.isActive]);
+
+  return null;
+}
+
 export default function RootLayout() {
   return (
     <Providers>
@@ -101,6 +130,7 @@ function Providers({ children }: { children: React.ReactNode }) {
       <KeyboardProvider>
         <ThemeProvider value={theme}>
           <SpacetimeDBProvider connectionBuilder={connectionBuilder}>
+            <TableAccessorsSync />
             <APIProvider>
               <BottomSheetModalProvider>
                 {children}

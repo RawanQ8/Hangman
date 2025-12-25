@@ -167,7 +167,6 @@ const sameId = (a: any, b: any) => {
   };
   return norm(a) === norm(b);
 };
-const tablesList = Object.values(tables as Record<string, any>);
 const shallowEqual = (
   a: Record<string, unknown> | null,
   b: Record<string, unknown> | null
@@ -240,23 +239,6 @@ export default function Hangman({
     lastRequestedWordIdRef.current = null;
     setWordObject(null);
   }, [resolvedGameId, resolvedGamePlayerId]);
-
-  const connection = spacetime.getConnection?.();
-
-  useEffect(() => {
-    if (!connection) return;
-    for (const tableDef of tablesList) {
-      const snake = tableDef.name;
-      const camel = tableDef.accessorName ?? snake;
-      if (snake === camel) continue;
-      if (Object.prototype.hasOwnProperty.call(connection.db, snake)) continue;
-
-      const descriptor = Object.getOwnPropertyDescriptor(connection.db, camel);
-      if (!descriptor) continue;
-
-      Object.defineProperty(connection.db, snake, descriptor);
-    }
-  }, [connection, spacetime]);
 
   const [responses] = useTable(tables.reducerResponse) ?? [];
   const [guesses] = useTable(tables.guess) ?? [];
