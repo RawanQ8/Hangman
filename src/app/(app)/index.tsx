@@ -1,4 +1,6 @@
 /* eslint-disable max-lines-per-function */
+import 'react-native-worklets';
+
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
@@ -19,6 +21,9 @@ import { useGameDataStore } from '@/store/game-data-store';
 import { useSessionStore } from '@/store/session-store';
 
 import useReducerInvoker from '../../hooks/useReducerInvoker';
+
+console.log('Worklets JS', global._WORKLETS_VERSION_JS);
+console.log('Worklets native', global._WORKLETS_VERSION_CPP);
 
 export default function Login() {
   const router = useRouter();

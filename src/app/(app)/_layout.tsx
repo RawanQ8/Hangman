@@ -7,8 +7,10 @@ import { useIsFirstTime } from '@/lib';
 export default function TabLayout() {
   const [isFirstTime] = useIsFirstTime();
   const hideSplash = useCallback(async () => {
+    //console.log('Hiding splash');
     await SplashScreen.hideAsync();
   }, []);
+
   useEffect(() => {
     const timeout = setTimeout(() => {
       hideSplash();

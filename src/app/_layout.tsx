@@ -19,11 +19,7 @@ import { getItem, setItem } from '@/lib/storage';
 import { useThemeConfig } from '@/lib/use-theme-config';
 import { useSessionStore } from '@/store/session-store';
 
-import {
-  DbConnection,
-  type ErrorContext,
-  tables,
-} from '../module_bindings';
+import { DbConnection, type ErrorContext, tables } from '../module_bindings';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -35,6 +31,7 @@ hydrateAuth();
 loadSelectedTheme();
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
+
 // Set the animation options. This is optional.
 SplashScreen.setOptions({
   duration: 500,
@@ -79,6 +76,8 @@ const connectionBuilder = DbConnection.builder()
   .withModuleName(
     'c200a021190b1eb70959bdcf083e89b768009b188bfef4fa9e4cb14440318a9f'
   )
+  // React Native lacks `DecompressionStream`, so disable gzip to avoid runtime errors.
+  .withCompression('none')
   .withToken(getItem<string>('auth_token') || undefined)
   .onConnect(onConnect)
   .onDisconnect(onDisconnect)
@@ -110,6 +109,10 @@ function TableAccessorsSync() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    console.log('Weird fix but ok');
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
   return (
     <Providers>
       <Stack>

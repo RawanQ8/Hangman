@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useSpacetimeDB, useTable } from 'spacetimedb/react';
 
 import { SafeAreaView, ScrollView, Text, View } from '@/components/ui';
@@ -30,6 +30,10 @@ export default function Leaderboard() {
   const { isActive } = useSpacetimeDB();
 
   const [leaderboard] = useTable(tables.leaderboard) ?? [[]];
+  const sortedLeaderboard = useMemo(
+    () => [...leaderboard].sort((a, b) => a.rank - b.rank),
+    [leaderboard]
+  );
 
   return (
     <SafeAreaView className="flex-1">
@@ -56,7 +60,7 @@ export default function Leaderboard() {
           </View>
         </View>
 
-        {leaderboard.length === 0 ? (
+        {sortedLeaderboard.length === 0 ? (
           <View className="mt-10 items-center rounded-3xl border border-blue-200 bg-blue-100 p-8 shadow-sm shadow-blue-100">
             <Text className="text-xl font-semibold text-blue-900">
               No scores yet
@@ -67,10 +71,10 @@ export default function Leaderboard() {
           </View>
         ) : (
           <View className="mt-6 rounded-3xl border border-blue-200 bg-blue-50 p-5 shadow-sm shadow-blue-100">
-            {leaderboard.map((winner, index) => (
+            {sortedLeaderboard.map((winner) => (
               <LeaderboardRow
                 key={String(winner.playerId ?? '')}
-                rank={index + 1}
+                rank={winner.rank}
                 identity={null}
                 username={winner.username}
                 score={winner.score}

@@ -167,18 +167,18 @@ const sameId = (a: any, b: any) => {
   };
   return norm(a) === norm(b);
 };
-const shallowEqual = (
-  a: Record<string, unknown> | null,
-  b: Record<string, unknown> | null
-) => {
-  if (a === b) return true;
-  if (!a || !b) return false;
-  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
-  for (const key of keys) {
-    if (a[key] !== b[key]) return false;
-  }
-  return true;
-};
+// const shallowEqual = (
+//   a: Record<string, unknown> | null,
+//   b: Record<string, unknown> | null
+// ) => {
+//   if (a === b) return true;
+//   if (!a || !b) return false;
+//   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+//   for (const key of keys) {
+//     if (a[key] !== b[key]) return false;
+//   }
+//   return true;
+// };
 
 // eslint-disable-next-line max-lines-per-function
 export default function Hangman({
@@ -215,10 +215,12 @@ export default function Hangman({
   const fetchGamePlayer = useReducerInvoker('get_game_player');
   const fetchWord = useReducerInvoker('get_word');
 
-  const latestGameResponse = useLatestResponse<Game>('get_game');
-  const latestGamePlayerResponse =
-    useLatestResponse<GamePlayer>('get_game_player');
-  const latestWordResponse = useLatestResponse<Word>('get_word');
+  const latestGameResponse = useLatestResponse<Game>('get_game', null);
+  const latestGamePlayerResponse = useLatestResponse<GamePlayer>(
+    'get_game_player',
+    null
+  );
+  const latestWordResponse = useLatestResponse<Word>('get_word', null);
   //console.log('in game:', gameId, playerId, gpId);
 
   const resolvedGameId = gameId ?? currentGame?.id;
