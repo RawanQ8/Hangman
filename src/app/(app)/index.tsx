@@ -11,6 +11,7 @@ import { JoinGameForm, NewGameForm } from '@/components/login-form';
 import {
   Button,
   FocusAwareStatusBar,
+  LoadingOverlay,
   SafeAreaView,
   Text,
   View,
@@ -21,9 +22,6 @@ import { useGameDataStore } from '@/store/game-data-store';
 import { useSessionStore } from '@/store/session-store';
 
 import useReducerInvoker from '../../hooks/useReducerInvoker';
-
-console.log('Worklets JS', global._WORKLETS_VERSION_JS);
-console.log('Worklets native', global._WORKLETS_VERSION_CPP);
 
 export default function Login() {
   const router = useRouter();
@@ -283,6 +281,8 @@ export default function Login() {
             onPress={() => setMode('join')}
           />
         </View>
+
+        {(pendingCreate || pendingJoin) && <LoadingOverlay />}
 
         {mode === 'create' ? (
           <NewGameForm onSubmit={onCreateNewGame} />

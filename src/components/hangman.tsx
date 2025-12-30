@@ -2,9 +2,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Image, TextInput } from 'react-native';
+import { Image, Pressable, TextInput } from 'react-native';
+//import Confetti from 'react-native-confetti';
 import ConfettiCannon from 'react-native-confetti-cannon';
-import { useSpacetimeDB, useTable } from 'spacetimedb/react';
+import { useTable } from 'spacetimedb/react';
 
 import hangman0 from '@/assets/hangman/hangman0.png';
 import hangman1 from '@/assets/hangman/hangman1.png';
@@ -13,7 +14,7 @@ import hangman3 from '@/assets/hangman/hangman3.png';
 import hangman4 from '@/assets/hangman/hangman4.png';
 import hangman5 from '@/assets/hangman/hangman5.png';
 import hangman6 from '@/assets/hangman/hangman6.png';
-import { Button, Text, TouchableOpacity, View } from '@/components/ui';
+import { Button, Text, View } from '@/components/ui';
 import { useLatestResponse } from '@/hooks/useLatestResponse';
 import useReducerInvoker from '@/hooks/useReducerInvoker';
 import { tables } from '@/module_bindings';
@@ -48,11 +49,11 @@ const KeyboardKey = ({
   }
 
   return (
-    <TouchableOpacity onPress={() => onPress(letter)}>
+    <Pressable className={'appearance-none'} onPress={() => onPress(letter)}>
       <Text className={`m-1 rounded border border-gray-200 p-3 ${statusStyle}`}>
         {letter}
       </Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
@@ -230,7 +231,7 @@ export default function Hangman({
   const lastResponseIdRef = useRef<bigint | null>(null);
   const lastRequestedWordIdRef = useRef<bigint | null>(null);
 
-  const spacetime = useSpacetimeDB();
+  //const spacetime = useSpacetimeDB();
 
   // When switching games/players, clear transient UI state and reset reducer tracking
   useEffect(() => {
@@ -355,20 +356,18 @@ export default function Hangman({
   useEffect(() => {
     console.log(`game won is: ${gameWon} and game lost is: ${gameLost}`);
     if (gameWon) {
+      console.log('handling game won');
       setWon(true);
       setShowConfetti(true);
       setTimeout(() => {
         setShowConfetti(false);
-        //setWon(false);
+        console.log('removed confetti');
       }, 3000);
     }
     if (gameLost) {
       setLost(true);
-      // setTimeout(() => {
-      //   //setLost(false);
-      // }, 3000);
     }
-    console.log(`Won state is: ${won} and lost state is: ${gameLost}`);
+    console.log(`Won state is: ${won} and lost state is: ${lost}`);
   }, [gameWon, gameLost]);
 
   //update current game player
@@ -422,6 +421,7 @@ export default function Hangman({
 
   // functions to handle game moves
   const onKeyPress = (letter: string) => {
+    console.log('handling key press');
     if (!resolvedGameId || !(gameStatus === 'in_progress')) return;
     if (gameWon || gameLost) return;
     handleGuess(letter);
@@ -459,14 +459,17 @@ export default function Hangman({
       <View className="flex-1 items-center justify-center gap-3">
         {/* <Text className="text-2xl text-blue-800">Hangman Game</Text> */}
         {showConfetti && (
-          <ConfettiCannon
-            count={200}
-            origin={{ x: -10, y: 0 }}
-            autoStart={true}
-            fadeOut={true}
-            explosionSpeed={350}
-          />
+          <>
+            <ConfettiCannon
+              count={200}
+              autoStart={true}
+              fadeOut={true}
+              origin={{ x: 0, y: 0 }}
+            />
+            <Text>Yaaaayyyyyy</Text>
+          </>
         )}
+
         <View className="mb-4 w-full items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
           <Text className="text-xs uppercase tracking-[3px] text-blue-700">
             Game Code
