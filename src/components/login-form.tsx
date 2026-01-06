@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React from 'react';
+import React, { useEffect } from 'react';
 import type { SubmitHandler } from 'react-hook-form';
 import { useForm } from 'react-hook-form';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
@@ -7,13 +7,11 @@ import * as z from 'zod';
 
 import { Button, ControlledInput, Text, View } from '@/components/ui';
 
-const schema = z.object({
-  name: z.string().optional(),
-  email: z
-    .string({
-      required_error: 'Email is required',
-    })
-    .email('Invalid email format'),
+const loginSchema = z.object({
+  name: z.string({
+    required_error: 'Username is required',
+  }),
+  email: z.string().email('Invalid email format').optional(),
   password: z
     .string({
       required_error: 'Password is required',
@@ -29,30 +27,33 @@ const newGameSchema = z.object({
 
 const joinGameSchema = z.object({
   name: z.string({
-    required_error: 'Username is requiered',
+    required_error: 'Username is required',
   }),
   id: z.string({
-    required_error: 'Game ID is requiered',
+    required_error: 'Game ID is required',
   }),
 });
 
-export type FormType = z.infer<typeof schema>;
+export type FormType = z.infer<typeof loginSchema>;
 export type CreateType = z.infer<typeof newGameSchema>;
 export type JoinType = z.infer<typeof joinGameSchema>;
 
 export type LoginFormProps = {
   onSubmit?: SubmitHandler<FormType>;
+  defaultName?: string;
 };
 export type CreateFormProps = {
   onSubmit?: SubmitHandler<CreateType>;
+  defaultName?: string;
 };
 export type JoinFormProps = {
   onSubmit?: SubmitHandler<JoinType>;
+  defaultName?: string;
 };
 
 export const LoginForm = ({ onSubmit = () => {} }: LoginFormProps) => {
   const { handleSubmit, control } = useForm<FormType>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(loginSchema),
   });
   return (
     <KeyboardAvoidingView
@@ -62,16 +63,19 @@ export const LoginForm = ({ onSubmit = () => {} }: LoginFormProps) => {
     >
       <View className="flex-1 justify-center p-4">
         <View className="items-center justify-center">
+          <Text testID="form-title" className=" text-center text-4xl font-bold">
+            Create Account
+          </Text>
           <Text
             testID="form-title"
             className="pb-6 text-center text-4xl font-bold"
           >
-            Sign In
+            or Login
           </Text>
 
           <Text className="mb-6 max-w-xs text-center text-gray-500">
-            Welcome! 👋 This is a demo login screen! Feel free to use any email
-            and password to sign in and try it out.
+            Welcome! 👋 Create an account so that you can collect points and
+            compete with your friends on the leaderboard
           </Text>
         </View>
 
@@ -79,15 +83,9 @@ export const LoginForm = ({ onSubmit = () => {} }: LoginFormProps) => {
           testID="name"
           control={control}
           name="name"
-          label="Name"
+          label="Username"
         />
 
-        <ControlledInput
-          testID="email-input"
-          control={control}
-          name="email"
-          label="Email"
-        />
         <ControlledInput
           testID="password-input"
           control={control}
@@ -96,20 +94,37 @@ export const LoginForm = ({ onSubmit = () => {} }: LoginFormProps) => {
           placeholder="***"
           secureTextEntry={true}
         />
+
         <Button
           testID="login-button"
           label="Login"
           onPress={handleSubmit(onSubmit)}
         />
+
+        {/* <ControlledInput
+          testID="email-input"
+          control={control}
+          name="email"
+          label="Email"
+        /> */}
       </View>
     </KeyboardAvoidingView>
   );
 };
 
-export const NewGameForm = ({ onSubmit = () => {} }: CreateFormProps) => {
-  const { handleSubmit, control } = useForm<CreateType>({
+export const NewGameForm = ({
+  onSubmit = () => {},
+  defaultName = '',
+}: CreateFormProps) => {
+  const { handleSubmit, control, reset } = useForm<CreateType>({
     resolver: zodResolver(newGameSchema),
+    defaultValues: { name: defaultName },
   });
+
+  useEffect(() => {
+    reset((prev) => ({ ...prev, name: defaultName }));
+  }, [defaultName, reset]);
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -146,10 +161,20 @@ export const NewGameForm = ({ onSubmit = () => {} }: CreateFormProps) => {
   );
 };
 
-export const JoinGameForm = ({ onSubmit = () => {} }: JoinFormProps) => {
-  const { handleSubmit, control } = useForm<JoinType>({
+export const JoinGameForm = ({
+  onSubmit = () => {},
+  defaultName = '',
+}: JoinFormProps) => {
+  const { handleSubmit, control, reset, getValues } = useForm<JoinType>({
     resolver: zodResolver(joinGameSchema),
+    defaultValues: { name: defaultName, id: '' },
   });
+
+  useEffect(() => {
+    // Preserve game ID while updating name
+    const currentId = getValues('id');
+    reset({ name: defaultName, id: currentId });
+  }, [defaultName, getValues, reset]);
 
   return (
     <KeyboardAvoidingView

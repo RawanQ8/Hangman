@@ -23,10 +23,6 @@ import { DbConnection, type ErrorContext, tables } from '../module_bindings';
 
 export { ErrorBoundary } from 'expo-router';
 
-export const unstable_settings = {
-  initialRouteName: '(app)',
-};
-
 hydrateAuth();
 loadSelectedTheme();
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -56,16 +52,16 @@ const onDisconnect = () => {
 };
 
 const onConnectError = (_ctx: ErrorContext, err: Error) => {
-  console.error('*** onConnectError fired ***', err);
+  console.log('*** onConnectError fired ***', err);
 
   // If it's a normal Error, log message
   if (err instanceof Error) {
-    console.error('Spacetime error message:', err.message);
+    console.log('Spacetime error message:', err.message);
   } else {
     // It’s likely a generic Event from WebSocket. Log its target.
     // @ts-expect-error – we know target is probably a WebSocket
     const ws = err.target;
-    console.error('WebSocket readyState:', ws?.readyState, 'URL:', ws?.url);
+    console.log('WebSocket readyState:', ws?.readyState, 'URL:', ws?.url);
   }
 };
 
@@ -108,6 +104,11 @@ function TableAccessorsSync() {
   return null;
 }
 
+// function SessionPlayerSync() {
+//   useSessionPlayerSync();
+//   return null;
+// }
+
 export default function RootLayout() {
   useEffect(() => {
     console.log('Weird fix but ok');
@@ -115,8 +116,17 @@ export default function RootLayout() {
   }, []);
   return (
     <Providers>
-      <Stack>
+      <Stack initialRouteName="login">
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="login"
+          options={{
+            headerShown: true,
+            headerBackButtonMenuEnabled: false,
+            headerBackVisible: false,
+            title: 'Login',
+          }}
+        />
         <Stack.Screen name="(app)" options={{ headerShown: false }} />
       </Stack>
     </Providers>
@@ -134,6 +144,7 @@ function Providers({ children }: { children: React.ReactNode }) {
         <ThemeProvider value={theme}>
           <SpacetimeDBProvider connectionBuilder={connectionBuilder}>
             <TableAccessorsSync />
+            {/* <SessionPlayerSync /> */}
             <APIProvider>
               <BottomSheetModalProvider>
                 {children}

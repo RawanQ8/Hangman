@@ -9,6 +9,19 @@ import { type GamePlayer } from '../module_bindings/game_player_type';
 import { type Game } from '../module_bindings/game_type';
 import { type Player } from '../module_bindings/player_type';
 
+const shallowEqual = (
+  a: Record<string, unknown> | Identity | null,
+  b: Record<string, unknown> | Identity | null
+) => {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const key of keys) {
+    if (a[key] !== b[key]) return false;
+  }
+  return true;
+};
+
 export function useLatestResponse<T = Game | GamePlayer | Player | Player[]>(
   reducerName: string,
   currentIdentity: Identity | null
@@ -44,13 +57,13 @@ export function useLatestResponse<T = Game | GamePlayer | Player | Player[]>(
       if (row.reducer !== reducerName) {
         continue;
       }
-      if (
-        reducerName === 'get_or_create_player ' &&
-        row.identity !== currentIdentity
-      ) {
-        console.log('wrong identity');
-        continue;
+
+      if (row.reducer !== 'create_game') {
+        if (!shallowEqual(row.identity, currentIdentity)) {
+          continue;
+        }
       }
+
       if (lastSeenIdRef.current !== null && row.id <= lastSeenIdRef.current) {
         continue; // already handled or stale
       }

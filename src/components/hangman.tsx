@@ -19,6 +19,7 @@ import { useLatestResponse } from '@/hooks/useLatestResponse';
 import useReducerInvoker from '@/hooks/useReducerInvoker';
 import { tables } from '@/module_bindings';
 import { useGameDataStore } from '@/store/game-data-store';
+import { useSessionStore } from '@/store/session-store';
 
 import { type GamePlayer } from '../module_bindings/game_player_type';
 import { type Game } from '../module_bindings/game_type';
@@ -200,12 +201,12 @@ export default function Hangman({
   const [wordScore, setWordScore] = useState(0);
 
   const currentGame = useGameDataStore.use.currentGame();
-  const currentPlayer = useGameDataStore.use.currentPlayer();
+  const currentPlayer = useSessionStore.use.player();
   const currentGamePlayer: GamePlayer =
     useGameDataStore.use.currentGamePlayer();
+  const identity = useSessionStore.use.identity();
 
   const setCurrentGame = useGameDataStore((state) => state.setCurrentGame);
-  const setCurrentPlayer = useGameDataStore((state) => state.setCurrentPlayer);
   const setCurrentGamePlayer = useGameDataStore(
     (state) => state.setCurrentGamePlayer
   );
@@ -216,12 +217,12 @@ export default function Hangman({
   const fetchGamePlayer = useReducerInvoker('get_game_player');
   const fetchWord = useReducerInvoker('get_word');
 
-  const latestGameResponse = useLatestResponse<Game>('get_game', null);
+  const latestGameResponse = useLatestResponse<Game>('get_game', identity);
   const latestGamePlayerResponse = useLatestResponse<GamePlayer>(
     'get_game_player',
-    null
+    identity
   );
-  const latestWordResponse = useLatestResponse<Word>('get_word', null);
+  const latestWordResponse = useLatestResponse<Word>('get_word', identity);
   //console.log('in game:', gameId, playerId, gpId);
 
   const resolvedGameId = gameId ?? currentGame?.id;
@@ -459,15 +460,12 @@ export default function Hangman({
       <View className="flex-1 items-center justify-center gap-3">
         {/* <Text className="text-2xl text-blue-800">Hangman Game</Text> */}
         {showConfetti && (
-          <>
-            <ConfettiCannon
-              count={200}
-              autoStart={true}
-              fadeOut={true}
-              origin={{ x: 0, y: 0 }}
-            />
-            <Text>Yaaaayyyyyy</Text>
-          </>
+          <ConfettiCannon
+            count={200}
+            autoStart={true}
+            fadeOut={true}
+            origin={{ x: 50, y: 100 }}
+          />
         )}
 
         <View className="mb-4 w-full items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
@@ -482,9 +480,9 @@ export default function Hangman({
               Playing as <Text className="font-semibold">{username}</Text>
             </Text>
           </View>
-          <Text className="text-2xl font-semibold text-blue-900">
+          {/* <Text className="text-2xl font-semibold text-blue-900">
             {resolvedGamePlayerId?.toString?.() ?? ''}
-          </Text>
+          </Text> */}
           {gameStatus === 'waiting' && (
             <View className="items-center rounded-full border border-blue-100 bg-white/80 px-3 py-1">
               <Text className="text-sm text-blue-800">

@@ -51,6 +51,8 @@ import GetGamePlayer from "./get_game_player_reducer";
 export { GetGamePlayer };
 import GetGameStatus from "./get_game_status_reducer";
 export { GetGameStatus };
+import GetLatestPlayer from "./get_latest_player_reducer";
+export { GetLatestPlayer };
 import GetOrCreatePlayer from "./get_or_create_player_reducer";
 export { GetOrCreatePlayer };
 import GetPlayer from "./get_player_reducer";
@@ -63,6 +65,8 @@ import GetTurn from "./get_turn_reducer";
 export { GetTurn };
 import GetWord from "./get_word_reducer";
 export { GetWord };
+import GetWordLength from "./get_word_length_reducer";
+export { GetWordLength };
 import JoinGame from "./join_game_reducer";
 export { JoinGame };
 import MakeGuess from "./make_guess_reducer";
@@ -216,12 +220,14 @@ const reducersSchema = __reducers(
   __reducerSchema("get_game_guesses", GetGameGuesses),
   __reducerSchema("get_game_player", GetGamePlayer),
   __reducerSchema("get_game_status", GetGameStatus),
+  __reducerSchema("get_latest_player", GetLatestPlayer),
   __reducerSchema("get_or_create_player", GetOrCreatePlayer),
   __reducerSchema("get_player", GetPlayer),
   __reducerSchema("get_player_guesses", GetPlayerGuesses),
   __reducerSchema("get_player_status", GetPlayerStatus),
   __reducerSchema("get_turn", GetTurn),
   __reducerSchema("get_word", GetWord),
+  __reducerSchema("get_word_length", GetWordLength),
   __reducerSchema("join_game", JoinGame),
   __reducerSchema("make_guess", MakeGuess),
   __reducerSchema("seed_words", SeedWords),

@@ -1,9 +1,10 @@
 import { useLocalSearchParams } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ScrollView } from 'react-native';
 import { useSpacetimeDB } from 'spacetimedb/react';
 
 import { SafeAreaView, Text } from '@/components/ui';
+import { useSessionStore } from '@/store/session-store';
 
 import Hangman from '../../components/hangman';
 
@@ -15,12 +16,26 @@ export default function Home() {
   }>();
 
   const { isActive: connected } = useSpacetimeDB();
+  const setPlayerId = useSessionStore((state) => state.setPlayerId);
   console.log('recieved data: ', params);
 
   const gameIdToSend = BigInt(params.gameId ? params.gameId : 0);
   console.log('type of game id to send', typeof gameIdToSend);
   const playerIdToSend = BigInt(params.playerId ? params.playerId : 0);
   const gpIdToSend = BigInt(params.gpId ? params.gpId : 0);
+
+  useEffect(() => {
+    if (params.playerId) {
+      try {
+        setPlayerId(BigInt(params.playerId));
+      } catch (err) {
+        console.warn('Unable to parse playerId param', err);
+        setPlayerId(null);
+      }
+    } else {
+      setPlayerId(null);
+    }
+  }, [params.playerId, setPlayerId]);
 
   return (
     <>

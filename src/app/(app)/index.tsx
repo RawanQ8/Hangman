@@ -1,10 +1,9 @@
 /* eslint-disable max-lines-per-function */
 import 'react-native-worklets';
 
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
-import ToggleSwitch from 'toggle-switch-react-native';
 
 import type { CreateFormProps, JoinFormProps } from '@/components/login-form';
 import { JoinGameForm, NewGameForm } from '@/components/login-form';
@@ -18,37 +17,53 @@ import {
 } from '@/components/ui';
 import { useLatestResponse } from '@/hooks/useLatestResponse';
 import { normalizeId } from '@/lib/normalize-id';
+import { type Player } from '@/module_bindings/player_type';
 import { useGameDataStore } from '@/store/game-data-store';
 import { useSessionStore } from '@/store/session-store';
 
 import useReducerInvoker from '../../hooks/useReducerInvoker';
 
-export default function Login() {
+export default function Lobby() {
   const router = useRouter();
+  const { isGuest: isGuestParam } = useLocalSearchParams<{
+    isGuest?: string;
+  }>();
+  const isGuest = isGuestParam === 'true';
   const [mode, setMode] = useState<'create' | 'join'>('create');
   const [pendingCreate, setPendingCreate] = useState(false);
   const [pendingJoin, setPendingJoin] = useState(false);
-  const [samePlayer, setSamePlayer] = useState(false);
   const [targetGameId, setTargetGameId] = useState<bigint | null>(null);
   const spacetime = useSpacetimeDB();
   const { isActive } = spacetime;
 
   const identity = useSessionStore((s) => s.identity);
 
-  const createPlayer = useReducerInvoker('create_player');
+  //const createPlayer = useReducerInvoker('create_player');
   const createGame = useReducerInvoker('create_game');
   const createGamePlayer = useReducerInvoker('create_game_player');
+  const createPlayer = useReducerInvoker('create_player');
   const joinGame = useReducerInvoker('join_game');
-  const getOrCreatePlayer = useReducerInvoker('get_or_create_player');
+  const getLatestPlayer = useReducerInvoker('get_latest_player');
 
-  const newPlayer = useLatestResponse('get_or_create_player', identity) ?? null;
-  const oldPlayer = useLatestResponse('create_player', identity) ?? null;
+  const guestPlayer =
+    useLatestResponse<Player>('create_player', identity) ?? null;
+  const latestPlayer =
+    useLatestResponse<Player>('get_latest_player', identity) ?? null;
+  const existingPlayer =
+    useLatestResponse<Player>('get_or_create_player', identity) ?? null;
+
+  const currentPlayer = isGuest
+    ? guestPlayer
+    : (latestPlayer ?? existingPlayer);
 
   const currentGame = useLatestResponse('create_game', identity) ?? null;
   const currentGamePlayer =
     useLatestResponse('create_game_player', identity) ?? null;
-  const currentPlayer = samePlayer ? newPlayer : oldPlayer;
-
+  const setPlayerId = useSessionStore((state) => state.setPlayerId);
+  const setSessionPlayer = useSessionStore((state) => state.setPlayer);
+  const username = useSessionStore(
+    (state) => state.username ?? state.player?.username ?? ''
+  );
   const setCurrentGame = useGameDataStore((state) => state.setCurrentGame);
   const setCurrentPlayer = useGameDataStore((state) => state.setCurrentPlayer);
   const setCurrentGamePlayer = useGameDataStore(
@@ -61,21 +76,36 @@ export default function Login() {
 
   //create a game player when necessary data is fetched
   useEffect(() => {
-    if (!currentPlayer || !currentGame) return;
+    if (!currentPlayer || !currentGame) {
+      console.log(
+        'cant create gamePlayer: missing game or player',
+        currentPlayer,
+        currentGame
+      );
+
+      return;
+    }
 
     // CREATE FLOW: wait for both player and game from reducers
     if (pendingCreate) {
-      if (!currentGame) return;
+      if (!currentGame) {
+        console.log('cant create gamePlayer: missing game');
+        return;
+      }
       // Ignore the previous response so we only act on fresh reducer outputs
       const playerIsFresh = currentPlayer.id !== lastPlayerIdRef.current;
       const gameIsFresh = currentGame.id !== lastGameIdRef.current;
 
       // wait until BOTH are fresh
-      if (!samePlayer) {
-        if (!(playerIsFresh && gameIsFresh)) return;
+      if (isGuest) {
+        console.log('user is guest');
+        if (!(playerIsFresh && gameIsFresh)) {
+          console.log('cant create gamePlayer: stale game or player ');
+          return;
+        }
       }
 
-      if (samePlayer) {
+      if (!isGuest) {
         if (!gameIsFresh) return;
         console.log('sticking with same user: ', currentPlayer.username);
       }
@@ -96,13 +126,13 @@ export default function Login() {
     // JOIN FLOW: we only need the new player and the target game ID typed by the user
     if (pendingJoin) {
       if (!targetGameId) return;
-      if (!samePlayer) {
+      if (isGuest) {
         if (currentPlayer.id === lastPlayerIdRef.current) {
           return;
         }
       }
-      if (samePlayer) {
-        console.log('joining with old player: ', currentPlayer?.username);
+      if (!isGuest) {
+        console.log('joining with existing player: ', currentPlayer?.username);
       }
 
       const playerId = normalizeId(currentPlayer.id);
@@ -129,18 +159,18 @@ export default function Login() {
     targetGameId,
     joinGame,
     pendingCreate,
-    samePlayer,
     identity,
+    isGuest,
   ]);
 
-  //set the current players and game when pending create or join change
   useEffect(() => {
-    if (!pendingCreate && !pendingJoin) return;
-    if (currentPlayer) {
-      setCurrentPlayer(currentPlayer);
-    }
-  }, [currentPlayer, pendingCreate, pendingJoin, setCurrentPlayer]);
+    if (!currentPlayer) return;
+    setPlayerId(currentPlayer.id);
+    setSessionPlayer(currentPlayer);
+    setCurrentPlayer(currentPlayer);
+  }, [currentPlayer, setCurrentPlayer, setPlayerId, setSessionPlayer]);
 
+  //set the current players and game when pending create or join change
   useEffect(() => {
     if (!pendingCreate && !pendingJoin) return;
     if (currentGame) {
@@ -215,6 +245,9 @@ export default function Login() {
     router,
   ]);
 
+  useEffect(() => {
+    console.log('is guest: ', isGuest);
+  }, [isGuest]);
   const onCreateNewGame: CreateFormProps['onSubmit'] = async (data) => {
     if (!isActive) {
       console.log('Not connected to SpacetimeDB yet');
@@ -231,8 +264,9 @@ export default function Login() {
 
     const username = data.name.trim();
     console.log('username:', username);
-    if (!samePlayer) createPlayer({ username });
-    if (samePlayer) getOrCreatePlayer();
+    if (isGuest) {
+      createPlayer({ username });
+    } else getLatestPlayer({ username });
     createGame();
   };
 
@@ -254,8 +288,9 @@ export default function Login() {
     setTargetGameId(gameId);
     console.log('username:', username);
 
-    if (!samePlayer) createPlayer({ username });
-    if (samePlayer) getOrCreatePlayer();
+    if (isGuest) {
+      createPlayer({ username });
+    } else getLatestPlayer({ username });
   };
 
   return (
@@ -285,16 +320,22 @@ export default function Login() {
         {(pendingCreate || pendingJoin) && <LoadingOverlay />}
 
         {mode === 'create' ? (
-          <NewGameForm onSubmit={onCreateNewGame} />
+          <NewGameForm
+            onSubmit={onCreateNewGame}
+            defaultName={username !== 'undefined' ? username : ''}
+          />
         ) : (
-          <JoinGameForm onSubmit={onJoinGame} />
+          <JoinGameForm
+            onSubmit={onJoinGame}
+            defaultName={username !== 'undefined' ? username : ''}
+          />
         )}
 
-        <ToggleSwitch
-          isOn={samePlayer}
-          label="Same Player"
-          onToggle={() => setSamePlayer(!samePlayer)}
-        />
+        <Button
+          onPress={() => router.push('/login')}
+          label="Go to Login "
+          className="w-1/2 self-center bg-blue-900"
+        ></Button>
 
         {/* Legacy email/password login kept for reference */}
         {/* <LoginForm onSubmit={onSubmit} isNewGame={false} /> */}

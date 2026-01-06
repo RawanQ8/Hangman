@@ -13,6 +13,7 @@ import {
 export default __t.row({
   id: __t.u64().primaryKey(),
   word: __t.string(),
+  length: __t.u32(),
   score: __t.u32(),
   difficulty: __t.string(),
 });
