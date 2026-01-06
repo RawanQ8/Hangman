@@ -82,7 +82,6 @@ export default function Lobby() {
         currentPlayer,
         currentGame
       );
-
       return;
     }
 

@@ -40,14 +40,6 @@ export function useLatestResponse<T = Game | GamePlayer | Player | Player[]>(
     let newestRowId: bigint | null = null;
     let newestPayload: T | null = null;
 
-    if (reducerName === 'get_leaderboard') {
-      //console.log('getting leaderboard data');
-      console.log(
-        'responses: ',
-        responses.filter((r) => r.reducer)
-      );
-    }
-
     const rows = responses ?? [];
     if (rows.length === 0) {
       return;
