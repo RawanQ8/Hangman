@@ -50,7 +50,7 @@ export function useLatestResponse<T = Game | GamePlayer | Player | Player[]>(
         continue;
       }
 
-      if (row.reducer !== 'create_game') {
+      if (row.reducer !== 'create_game' && currentIdentity) {
         if (!shallowEqual(row.identity, currentIdentity)) {
           continue;
         }

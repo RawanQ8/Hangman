@@ -25,9 +25,11 @@ import useReducerInvoker from '../../hooks/useReducerInvoker';
 
 export default function Lobby() {
   const router = useRouter();
-  const { isGuest: isGuestParam } = useLocalSearchParams<{
-    isGuest?: string;
-  }>();
+  const { isGuest: isGuestParam, userType: playerTypeParam } =
+    useLocalSearchParams<{
+      isGuest?: string;
+      userType?: string;
+    }>();
   const isGuest = isGuestParam === 'true';
   const [mode, setMode] = useState<'create' | 'join'>('create');
   const [pendingCreate, setPendingCreate] = useState(false);
@@ -45,16 +47,19 @@ export default function Lobby() {
   const joinGame = useReducerInvoker('join_game');
   const getLatestPlayer = useReducerInvoker('get_latest_player');
 
-  const guestPlayer =
-    useLatestResponse<Player>('create_player', identity) ?? null;
-  const latestPlayer =
-    useLatestResponse<Player>('get_latest_player', identity) ?? null;
+  // const newPlayer =
+  //   useLatestResponse<Player>('create_player', identity) ?? null;
+  // const latestPlayer =
+  //   useLatestResponse<Player>('create_player', identity) ?? null;
   const existingPlayer =
-    useLatestResponse<Player>('get_or_create_player', identity) ?? null;
+    useLatestResponse<Player>('get_player_by_username', identity) ?? null;
 
-  const currentPlayer = isGuest
-    ? guestPlayer
-    : (latestPlayer ?? existingPlayer);
+  const currentPlayer = existingPlayer;
+
+  useEffect(() => {
+    console.log('user type was: ', playerTypeParam);
+    console.log('Current Player is now: ', currentPlayer);
+  }, [currentPlayer, playerTypeParam]);
 
   const currentGame = useLatestResponse('create_game', identity) ?? null;
   const currentGamePlayer =
@@ -64,6 +69,7 @@ export default function Lobby() {
   const username = useSessionStore(
     (state) => state.username ?? state.player?.username ?? ''
   );
+  //const playerId = useSessionStore((state) => state.player?.id);
   const setCurrentGame = useGameDataStore((state) => state.setCurrentGame);
   const setCurrentPlayer = useGameDataStore((state) => state.setCurrentPlayer);
   const setCurrentGamePlayer = useGameDataStore(

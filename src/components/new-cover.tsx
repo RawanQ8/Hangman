@@ -41,11 +41,11 @@ export const Cover = (props: SvgProps) => (
     </G>
 
     {/* Gallows */}
-    <G>
+    <G transform="translate(103.875 91.25) scale(0.75)">
       {/* Base */}
       <Rect
         x="150"
-        y="470"
+        y="670"
         width="530"
         height="70"
         rx="18"
@@ -55,7 +55,7 @@ export const Cover = (props: SvgProps) => (
       />
       <Rect
         x="150"
-        y="470"
+        y="670"
         width="530"
         height="18"
         rx="18"
@@ -68,7 +68,7 @@ export const Cover = (props: SvgProps) => (
         x="210"
         y="210"
         width="84"
-        height="260"
+        height="460"
         rx="14"
         fill="#D1BDA8"
         stroke="#8A7968"
@@ -83,14 +83,6 @@ export const Cover = (props: SvgProps) => (
         height="70"
         rx="14"
         fill="#D1BDA8"
-        stroke="#8A7968"
-        strokeWidth="4"
-      />
-
-      {/* Brace */}
-      <Path
-        d="M294 300 L350 300 L410 380 L354 380 Z"
-        fill="#C7B39E"
         stroke="#8A7968"
         strokeWidth="4"
       />
@@ -117,7 +109,7 @@ export const Cover = (props: SvgProps) => (
       />
 
       {/* Character (alive / neutral) */}
-      <G>
+      <G transform={'translate(515 350) scale(0.85) translate(-515 -350)'}>
         {/* Head */}
         <Circle
           cx="520"
@@ -187,7 +179,7 @@ export const Cover = (props: SvgProps) => (
     <G>
       <Rect
         x="120"
-        y="565"
+        y="665"
         width="591"
         height="120"
         rx="20"
@@ -207,7 +199,7 @@ export const Cover = (props: SvgProps) => (
         <G key={i}>
           <Rect
             x={t.x}
-            y="588"
+            y="688"
             width="62"
             height="62"
             rx="14"
@@ -217,7 +209,7 @@ export const Cover = (props: SvgProps) => (
           />
           <SvgText
             x={t.x + 31}
-            y="633"
+            y="733"
             fontSize="34"
             fontWeight="800"
             textAnchor="middle"
@@ -233,7 +225,7 @@ export const Cover = (props: SvgProps) => (
     {/* Subtle tagline */}
     <SvgText
       x="415.5"
-      y="712"
+      y="812"
       fontSize="20"
       fontWeight="600"
       textAnchor="middle"
