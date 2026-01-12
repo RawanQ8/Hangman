@@ -41,6 +41,8 @@ export default function Login() {
   const getPlayer = useReducerInvoker('get_player_by_username');
   const createPlayer = useReducerInvoker('create_player');
   const setUsername = useSessionStore((state) => state.setUsername);
+  const setPlayer = useSessionStore((state) => state.setPlayer);
+  const setPlayerId = useSessionStore((state) => state.setPlayerId);
   const username = useSessionStore((state) => state.username ?? '');
   const [activeTab, setActiveTab] = useState<AuthTab>('create');
   const [pending, setPending] = useState(false);
@@ -92,6 +94,8 @@ export default function Login() {
   const onJoinGuest = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setUsername('');
+    setPlayer(null);
+    setPlayerId(null);
     router.push({
       pathname: '/(app)',
       params: { isGuest: 'true' },

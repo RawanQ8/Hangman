@@ -3,7 +3,7 @@ import 'react-native-worklets';
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { useSpacetimeDB } from 'spacetimedb/react';
+import { useSpacetimeDB, useTable } from 'spacetimedb/react';
 
 import type { CreateFormProps, JoinFormProps } from '@/components/login-form';
 import { JoinGameForm, NewGameForm } from '@/components/login-form';
@@ -15,13 +15,49 @@ import {
   Text,
   View,
 } from '@/components/ui';
+import { showErrorMessage } from '@/components/ui/utils';
 import { useLatestResponse } from '@/hooks/useLatestResponse';
+import { shallowEqualIdentity } from '@/lib';
 import { normalizeId } from '@/lib/normalize-id';
+import { tables } from '@/module_bindings';
 import { type Player } from '@/module_bindings/player_type';
 import { useGameDataStore } from '@/store/game-data-store';
 import { useSessionStore } from '@/store/session-store';
 
 import useReducerInvoker from '../../hooks/useReducerInvoker';
+
+const watchedReducers = new Set([
+  'join_game',
+  'create_game',
+  'create_game_player',
+  'create_player',
+]);
+
+const parseReducerError = (payload: string) => {
+  if (!payload) return null;
+
+  try {
+    const parsed = JSON.parse(payload);
+    if (parsed && typeof parsed === 'object' && 'Err' in parsed) {
+      const err = (parsed as Record<string, unknown>).Err;
+      if (typeof err === 'string') return err;
+      return JSON.stringify(err);
+    }
+    if (typeof parsed === 'string') {
+      return parsed.toLowerCase().includes('error') ? parsed : null;
+    }
+  } catch {
+    const lower = payload.toLowerCase();
+    if (
+      lower.includes('error') ||
+      lower.includes('fail') ||
+      lower.includes('not found')
+    ) {
+      return payload;
+    }
+  }
+  return null;
+};
 
 export default function Lobby() {
   const router = useRouter();
@@ -35,8 +71,10 @@ export default function Lobby() {
   const [pendingCreate, setPendingCreate] = useState(false);
   const [pendingJoin, setPendingJoin] = useState(false);
   const [targetGameId, setTargetGameId] = useState<bigint | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const spacetime = useSpacetimeDB();
   const { isActive } = spacetime;
+  const [responses] = useTable(tables.reducerResponse) ?? [];
 
   const identity = useSessionStore((s) => s.identity);
 
@@ -79,6 +117,7 @@ export default function Lobby() {
   const lastPlayerIdRef = useRef<bigint | null>(currentPlayer?.id ?? null);
   const lastGameIdRef = useRef<bigint | null>(currentGame?.id ?? null);
   const lastGpIdRef = useRef<bigint | null>(currentGamePlayer?.id ?? null);
+  const lastErrorIdRef = useRef<bigint | null>(null);
 
   //create a game player when necessary data is fetched
   useEffect(() => {
@@ -258,6 +297,7 @@ export default function Lobby() {
       console.log('Not connected to SpacetimeDB yet');
       return;
     }
+    setErrorMessage(null);
 
     // Snapshot previous IDs before firing reducers
     lastPlayerIdRef.current = currentPlayer?.id ?? null;
@@ -271,6 +311,7 @@ export default function Lobby() {
     console.log('username:', username);
     if (isGuest) {
       createPlayer({ username });
+      getLatestPlayer({ username });
     } else getLatestPlayer({ username });
     createGame();
   };
@@ -284,6 +325,7 @@ export default function Lobby() {
     // Snapshot previous IDs before firing reducers
     lastPlayerIdRef.current = currentPlayer?.id ?? null;
     lastGpIdRef.current = currentGamePlayer?.id ?? null;
+    setErrorMessage(null);
 
     const username = data.name.trim();
     const gameId = BigInt(data.id);
@@ -297,6 +339,49 @@ export default function Lobby() {
       createPlayer({ username });
     } else getLatestPlayer({ username });
   };
+
+  useEffect(() => {
+    const hasPending = pendingCreate || pendingJoin;
+    if (!hasPending) return;
+
+    const currentMode = pendingCreate ? 'create' : 'join';
+    const timeout = setTimeout(() => {
+      setPendingCreate(false);
+      setPendingJoin(false);
+      setErrorMessage(
+        currentMode === 'create'
+          ? 'Game creation timed out. Please try again.'
+          : 'Unable to join game. Check the code and try again.'
+      );
+    }, 8000);
+
+    return () => clearTimeout(timeout);
+  }, [pendingCreate, pendingJoin]);
+
+  useEffect(() => {
+    if (!pendingCreate && !pendingJoin) return;
+    if (!responses || responses.length === 0) return;
+
+    for (const row of responses) {
+      if (!watchedReducers.has(row.reducer)) continue;
+      if (identity && !shallowEqualIdentity(row.identity, identity)) continue;
+      if (lastErrorIdRef.current && row.id <= lastErrorIdRef.current) continue;
+
+      lastErrorIdRef.current = row.id;
+      const parsedError = parseReducerError(row.payload);
+      if (!parsedError) continue;
+
+      setPendingCreate(false);
+      setPendingJoin(false);
+      setErrorMessage(parsedError);
+      break;
+    }
+  }, [identity, pendingCreate, pendingJoin, responses]);
+
+  useEffect(() => {
+    if (!errorMessage) return;
+    showErrorMessage(errorMessage);
+  }, [errorMessage]);
 
   return (
     <>
@@ -336,14 +421,15 @@ export default function Lobby() {
           />
         )}
 
+        {errorMessage && (
+          <Text className="mt-2 text-center text-red-600">{errorMessage}</Text>
+        )}
+
         <Button
           onPress={() => router.push('/login')}
           label="Go to Login "
           className="w-1/2 self-center bg-blue-900"
         ></Button>
-
-        {/* Legacy email/password login kept for reference */}
-        {/* <LoginForm onSubmit={onSubmit} isNewGame={false} /> */}
       </SafeAreaView>
     </>
   );

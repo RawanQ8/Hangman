@@ -3,24 +3,12 @@ import { useEffect, useRef, useState } from 'react';
 import { type Identity } from 'spacetimedb';
 import { useTable } from 'spacetimedb/react';
 
+import { shallowEqualIdentity } from '@/lib';
 import { tables } from '@/module_bindings';
 
 import { type GamePlayer } from '../module_bindings/game_player_type';
 import { type Game } from '../module_bindings/game_type';
 import { type Player } from '../module_bindings/player_type';
-
-const shallowEqual = (
-  a: Record<string, unknown> | Identity | null,
-  b: Record<string, unknown> | Identity | null
-) => {
-  if (a === b) return true;
-  if (!a || !b) return false;
-  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
-  for (const key of keys) {
-    if (a[key] !== b[key]) return false;
-  }
-  return true;
-};
 
 export function useLatestResponse<T = Game | GamePlayer | Player | Player[]>(
   reducerName: string,
@@ -51,7 +39,7 @@ export function useLatestResponse<T = Game | GamePlayer | Player | Player[]>(
       }
 
       if (row.reducer !== 'create_game' && currentIdentity) {
-        if (!shallowEqual(row.identity, currentIdentity)) {
+        if (!shallowEqualIdentity(row.identity, currentIdentity)) {
           continue;
         }
       }

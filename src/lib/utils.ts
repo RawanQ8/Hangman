@@ -20,3 +20,16 @@ export const createSelectors = <S extends UseBoundStore<StoreApi<object>>>(
 
   return store;
 };
+
+export const shallowEqualIdentity = (
+  a: Record<string, unknown> | null,
+  b: Record<string, unknown> | null
+) => {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const key of keys) {
+    if (a[key] !== b[key]) return false;
+  }
+  return true;
+};
