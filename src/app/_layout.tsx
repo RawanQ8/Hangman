@@ -10,16 +10,19 @@ import { StyleSheet } from 'react-native';
 import FlashMessage from 'react-native-flash-message';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
-import { type Identity } from 'spacetimedb';
 import { SpacetimeDBProvider, useSpacetimeDB } from 'spacetimedb/react';
 
 import { APIProvider } from '@/api';
 import { hydrateAuth, loadSelectedTheme } from '@/lib';
-import { getItem, setItem } from '@/lib/storage';
+import {
+  onConnect,
+  onConnectError,
+  onDisconnect,
+} from '@/lib/connection-handlers';
+import { getItem } from '@/lib/storage';
 import { useThemeConfig } from '@/lib/use-theme-config';
-import { useSessionStore } from '@/store/session-store';
 
-import { DbConnection, type ErrorContext, tables } from '../module_bindings';
+import { DbConnection, tables } from '../module_bindings';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -34,36 +37,36 @@ SplashScreen.setOptions({
   fade: true,
 });
 
-const onConnect = (conn: DbConnection, identity: Identity, token: string) => {
-  console.log(
-    'Connected to SpacetimeDB with identity:',
-    identity.toHexString()
-  );
-  // Store auth token so we can reconnect with same identity
-  // Persist the auth token using native storage (localStorage is not available in RN)
-  setItem('auth_token', token);
-  const { setIdentity, setConnection } = useSessionStore.getState();
-  setIdentity(identity);
-  setConnection(conn);
-};
+// const onConnect = (conn: DbConnection, identity: Identity, token: string) => {
+//   console.log(
+//     'Connected to SpacetimeDB with identity:',
+//     identity.toHexString()
+//   );
+//   // Store auth token so we can reconnect with same identity
+//   // Persist the auth token using native storage (localStorage is not available in RN)
+//   setItem('auth_token', token);
+//   const { setIdentity, setConnection } = useSessionStore.getState();
+//   setIdentity(identity);
+//   setConnection(conn);
+// };
 
-const onDisconnect = () => {
-  console.log('Disconnected from SpacetimeDB');
-};
+// const onDisconnect = () => {
+//   console.log('Disconnected from SpacetimeDB');
+// };
 
-const onConnectError = (_ctx: ErrorContext, err: Error) => {
-  console.log('*** onConnectError fired ***', err);
+// const onConnectError = (_ctx: ErrorContext, err: Error) => {
+//   console.log('*** onConnectError fired ***', err);
 
-  // If it's a normal Error, log message
-  if (err instanceof Error) {
-    console.log('Spacetime error message:', err.message);
-  } else {
-    // It’s likely a generic Event from WebSocket. Log its target.
-    // @ts-expect-error – we know target is probably a WebSocket
-    const ws = err.target;
-    console.log('WebSocket readyState:', ws?.readyState, 'URL:', ws?.url);
-  }
-};
+//   // If it's a normal Error, log message
+//   if (err instanceof Error) {
+//     console.log('Spacetime error message:', err.message);
+//   } else {
+//     // It’s likely a generic Event from WebSocket. Log its target.
+//     // @ts-expect-error – we know target is probably a WebSocket
+//     const ws = err.target;
+//     console.log('WebSocket readyState:', ws?.readyState, 'URL:', ws?.url);
+//   }
+// };
 
 const connectionBuilder = DbConnection.builder()
   .withUri('wss://maincloud.spacetimedb.com') // where `spacetime start` is running

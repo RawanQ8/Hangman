@@ -17,7 +17,7 @@ export default function Home() {
 
   const { isActive: connected } = useSpacetimeDB();
   const setPlayerId = useSessionStore((state) => state.setPlayerId);
-  console.log('recieved data: ', params);
+  console.log('received data: ', params);
 
   const gameIdToSend = BigInt(params.gameId ? params.gameId : 0);
   console.log('type of game id to send', typeof gameIdToSend);

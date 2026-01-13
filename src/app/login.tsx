@@ -93,6 +93,8 @@ export default function Login() {
 
   const onJoinGuest = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    console.log('creating guest player');
+    createPlayer({});
     setUsername('');
     setPlayer(null);
     setPlayerId(null);

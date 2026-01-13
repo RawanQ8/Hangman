@@ -17,7 +17,7 @@ import {
 } from '@/components/ui';
 import { showErrorMessage } from '@/components/ui/utils';
 import { useLatestResponse } from '@/hooks/useLatestResponse';
-import { shallowEqualIdentity } from '@/lib';
+import { parseReducerError, shallowEqualIdentity } from '@/lib';
 import { normalizeId } from '@/lib/normalize-id';
 import { tables } from '@/module_bindings';
 import { type Player } from '@/module_bindings/player_type';
@@ -32,32 +32,6 @@ const watchedReducers = new Set([
   'create_game_player',
   'create_player',
 ]);
-
-const parseReducerError = (payload: string) => {
-  if (!payload) return null;
-
-  try {
-    const parsed = JSON.parse(payload);
-    if (parsed && typeof parsed === 'object' && 'Err' in parsed) {
-      const err = (parsed as Record<string, unknown>).Err;
-      if (typeof err === 'string') return err;
-      return JSON.stringify(err);
-    }
-    if (typeof parsed === 'string') {
-      return parsed.toLowerCase().includes('error') ? parsed : null;
-    }
-  } catch {
-    const lower = payload.toLowerCase();
-    if (
-      lower.includes('error') ||
-      lower.includes('fail') ||
-      lower.includes('not found')
-    ) {
-      return payload;
-    }
-  }
-  return null;
-};
 
 export default function Lobby() {
   const router = useRouter();
@@ -78,7 +52,6 @@ export default function Lobby() {
 
   const identity = useSessionStore((s) => s.identity);
 
-  //const createPlayer = useReducerInvoker('create_player');
   const createGame = useReducerInvoker('create_game');
   const createGamePlayer = useReducerInvoker('create_game_player');
   const createPlayer = useReducerInvoker('create_player');
@@ -91,8 +64,9 @@ export default function Lobby() {
   //   useLatestResponse<Player>('create_player', identity) ?? null;
   const existingPlayer =
     useLatestResponse<Player>('get_player_by_username', identity) ?? null;
-
-  const currentPlayer = existingPlayer;
+  const newPlayer =
+    useLatestResponse<Player>('create_player', identity) ?? null;
+  const currentPlayer = isGuest ? newPlayer : existingPlayer;
 
   useEffect(() => {
     console.log('user type was: ', playerTypeParam);

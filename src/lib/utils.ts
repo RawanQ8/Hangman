@@ -33,3 +33,29 @@ export const shallowEqualIdentity = (
   }
   return true;
 };
+
+export const parseReducerError = (payload: string) => {
+  if (!payload) return null;
+
+  try {
+    const parsed = JSON.parse(payload);
+    if (parsed && typeof parsed === 'object' && 'Err' in parsed) {
+      const err = (parsed as Record<string, unknown>).Err;
+      if (typeof err === 'string') return err;
+      return JSON.stringify(err);
+    }
+    if (typeof parsed === 'string') {
+      return parsed.toLowerCase().includes('error') ? parsed : null;
+    }
+  } catch {
+    const lower = payload.toLowerCase();
+    if (
+      lower.includes('error') ||
+      lower.includes('fail') ||
+      lower.includes('not found')
+    ) {
+      return payload;
+    }
+  }
+  return null;
+};

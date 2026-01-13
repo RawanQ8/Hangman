@@ -17,6 +17,7 @@ import hangman6 from '@/assets/hangman/hangman6.png';
 import { Button, Text, View } from '@/components/ui';
 import { useLatestResponse } from '@/hooks/useLatestResponse';
 import useReducerInvoker from '@/hooks/useReducerInvoker';
+import { shallowEqualIdentity } from '@/lib/utils';
 import { tables } from '@/module_bindings';
 import { useGameDataStore } from '@/store/game-data-store';
 import { useSessionStore } from '@/store/session-store';
@@ -169,18 +170,6 @@ const sameId = (a: any, b: any) => {
   };
   return norm(a) === norm(b);
 };
-// const shallowEqual = (
-//   a: Record<string, unknown> | null,
-//   b: Record<string, unknown> | null
-// ) => {
-//   if (a === b) return true;
-//   if (!a || !b) return false;
-//   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
-//   for (const key of keys) {
-//     if (a[key] !== b[key]) return false;
-//   }
-//   return true;
-// };
 
 // eslint-disable-next-line max-lines-per-function
 export default function Hangman({
@@ -240,6 +229,7 @@ export default function Hangman({
 
   // When switching game, refresh
   useEffect(() => {
+    console.log('Entered new game');
     setWon(false);
     setLost(false);
     setShowConfetti(false);
@@ -247,6 +237,17 @@ export default function Hangman({
     lastRequestedWordIdRef.current = null;
     setWordObject(null);
   }, [currentGame.id]);
+
+  useEffect(() => {
+    return () => {
+      setWon(false);
+      setLost(false);
+      setShowConfetti(false);
+      lastResponseIdRef.current = null;
+      lastRequestedWordIdRef.current = null;
+      setWordObject(null);
+    };
+  }, []);
 
   const [responses] = useTable(tables.reducerResponse) ?? [];
   const [guesses] = useTable(tables.guess) ?? [];
@@ -305,10 +306,10 @@ export default function Hangman({
       //console.log('payload: ', payload);
 
       if (row.reducer === 'make_guess') {
-        if (BigInt(payload.gp_id) === BigInt(resolvedGamePlayerId)) {
-          //console.log(resolvedGamePlayerId);
-          //console.log('matching gpIds for paylaod: ', payload);
+        if (!shallowEqualIdentity(gpId, payload.gp_id)) {
+          continue;
         }
+        //console.log('guessing with correct id: ', payload.gp_id);
       }
 
       if (row.reducer === 'join_game') {
@@ -354,7 +355,6 @@ export default function Hangman({
       //const gameResponse = JSON.parse(latestGameResponse);
 
       console.log('game updated to: ', latestGameResponse);
-      console.log('word response: ');
       setCurrentGame(latestGameResponse);
     }
   }, [currentGame?.id, latestGameResponse, setCurrentGame]);
