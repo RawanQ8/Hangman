@@ -220,8 +220,8 @@ export default function Lobby() {
     if (pendingCreate && currentGame) {
       const gameId = String(currentGame.id);
       console.log(`creating game with ids: ${gameId}, ${playerId} and ${gpId}`);
-      router.push({
-        pathname: '/(app)/home',
+      router.replace({
+        pathname: '/home',
         params: {
           gameId,
           gpId,
@@ -241,8 +241,8 @@ export default function Lobby() {
       const gameId = String(targetGameId);
       console.log(`joining game with ids: ${gameId}, ${playerId} and ${gpId}`);
 
-      router.push({
-        pathname: '/(app)/home',
+      router.replace({
+        pathname: '/home',
         params: {
           gameId,
           gpId,

@@ -32,15 +32,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="home"
-        options={{
-          title: 'Play',
-          tabBarIcon: ({ color }) => <FeedIcon color={color} />,
-          href: null,
-          headerShown: false,
-        }}
-      />
-      <Tabs.Screen
         name="leaderboard"
         options={{
           title: 'LeaderBoard',

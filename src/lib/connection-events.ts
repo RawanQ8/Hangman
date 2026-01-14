@@ -5,9 +5,14 @@ export const connectionStatus = {
   isSubscribed: false,
   error: null as Error | null,
   identity: null as Identity | null,
+  retryAttempt: 0,
+  nextRetryInMs: null as number | null,
+  lastErrorAt: null as number | null,
 };
 
 const listeners = new Set<() => void>();
+let reconnectFn: (() => void) | null = null;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const onConnectionChange = (callback: () => void) => {
   listeners.add(callback);
@@ -26,4 +31,30 @@ export const notifyConnectionError = () => {
 
 export const cleanupConnectionListener = () => {
   listeners.clear();
+};
+
+export const setReconnectFn = (fn: (() => void) | null) => {
+  reconnectFn = fn;
+};
+
+export const clearReconnectTimer = () => {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  connectionStatus.nextRetryInMs = null;
+};
+
+export const requestReconnect = () => {
+  clearReconnectTimer();
+  reconnectFn?.();
+};
+
+export const scheduleReconnectRequest = (delayMs: number) => {
+  clearReconnectTimer();
+  connectionStatus.nextRetryInMs = delayMs;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    requestReconnect();
+  }, delayMs);
 };

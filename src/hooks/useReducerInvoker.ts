@@ -30,7 +30,9 @@ export default function useReducerInvoker(name: string) {
         return;
       }
       const conn = getConnection();
-      if (!conn) {
+      // Wait until the websocket is fully active before sending,
+      // otherwise spacetimedb tries to send on a closed socket.
+      if (!conn || !isActive) {
         queueRef.current.push(params);
         return;
       }
@@ -46,7 +48,7 @@ export default function useReducerInvoker(name: string) {
         console.error(err);
       }
     },
-    [schema, getConnection, name]
+    [schema, getConnection, isActive, name]
   );
 
   useEffect(() => {

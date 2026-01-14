@@ -5,7 +5,7 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import FlashMessage from 'react-native-flash-message';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -19,6 +19,10 @@ import {
   onConnectError,
   onDisconnect,
 } from '@/lib/connection-handlers';
+import {
+  clearReconnectTimer,
+  setReconnectFn,
+} from '@/lib/connection-events';
 import { getItem } from '@/lib/storage';
 import { useThemeConfig } from '@/lib/use-theme-config';
 
@@ -131,6 +135,13 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen name="(app)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="home"
+          options={{
+            headerShown: false,
+            title: 'Hangman',
+          }}
+        />
       </Stack>
     </Providers>
   );
@@ -138,6 +149,18 @@ export default function RootLayout() {
 
 function Providers({ children }: { children: React.ReactNode }) {
   const theme = useThemeConfig();
+  const [connectionKey, setConnectionKey] = useState(0);
+
+  useEffect(() => {
+    const forceReconnectNow = () => {
+      clearReconnectTimer();
+      setConnectionKey((key) => key + 1);
+    };
+
+    setReconnectFn(forceReconnectNow);
+    return () => setReconnectFn(null);
+  }, []);
+
   return (
     <GestureHandlerRootView
       style={styles.container}
@@ -145,7 +168,10 @@ function Providers({ children }: { children: React.ReactNode }) {
     >
       <KeyboardProvider>
         <ThemeProvider value={theme}>
-          <SpacetimeDBProvider connectionBuilder={connectionBuilder}>
+          <SpacetimeDBProvider
+            key={connectionKey}
+            connectionBuilder={connectionBuilder}
+          >
             <TableAccessorsSync />
             {/* <SessionPlayerSync /> */}
             <APIProvider>

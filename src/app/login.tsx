@@ -74,7 +74,7 @@ export default function Login() {
 
     if (userType === 'new') {
       timeoutRef.current = setTimeout(() => {
-        router.push({
+        router.replace({
           pathname: '/(app)',
           params: { isGuest: 'false', userType: 'new' },
         });
@@ -82,7 +82,7 @@ export default function Login() {
       }, 900);
     } else {
       timeoutRef.current = setTimeout(() => {
-        router.push({
+        router.replace({
           pathname: '/(app)',
           params: { isGuest: 'false', userType: 'login' },
         });
@@ -98,7 +98,7 @@ export default function Login() {
     setUsername('');
     setPlayer(null);
     setPlayerId(null);
-    router.push({
+    router.replace({
       pathname: '/(app)',
       params: { isGuest: 'true' },
     });

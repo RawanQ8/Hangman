@@ -5,15 +5,39 @@ import { useSessionStore } from '@/store/session-store';
 
 import {
   connectionStatus,
+  clearReconnectTimer,
   notifyConnectionDisconnected,
   notifyConnectionError,
   notifyConnectionEstablished,
+  scheduleReconnectRequest,
 } from './connection-events';
 import { setItem } from './storage';
 import {
   notifySubscriptionApplied,
   notifySubscriptionError,
 } from './subscription-events';
+
+const BASE_RETRY_DELAY_MS = 1000;
+const MAX_RETRY_DELAY_MS = 30_000;
+
+const resetRetryState = () => {
+  clearReconnectTimer();
+  connectionStatus.retryAttempt = 0;
+  connectionStatus.nextRetryInMs = null;
+  connectionStatus.lastErrorAt = null;
+};
+
+const scheduleReconnect = () => {
+  const attempt = connectionStatus.retryAttempt + 1;
+  connectionStatus.retryAttempt = attempt;
+  connectionStatus.lastErrorAt = Date.now();
+  const delay =
+    attempt === 1
+      ? BASE_RETRY_DELAY_MS
+      : Math.min(MAX_RETRY_DELAY_MS, BASE_RETRY_DELAY_MS * attempt);
+  scheduleReconnectRequest(delay);
+  connectionStatus.nextRetryInMs = delay;
+};
 
 export const subscribeToQueries = (conn: DbConnection, queries: string[]) => {
   conn
@@ -45,6 +69,7 @@ export const onConnect = (
   connectionStatus.isConnected = true;
   connectionStatus.error = null;
   connectionStatus.identity = identity;
+  resetRetryState();
   setItem('auth_token', token);
 
   notifyConnectionEstablished();
@@ -55,6 +80,7 @@ export const onDisconnect = () => {
   console.warn('Disconnected from SpacetimeDB');
   connectionStatus.isConnected = false;
   connectionStatus.isSubscribed = false;
+  scheduleReconnect();
   notifyConnectionDisconnected();
 };
 
@@ -68,5 +94,6 @@ export const onConnectError = (_ctx: ErrorContext, err: Error) => {
   connectionStatus.isConnected = false;
   connectionStatus.isSubscribed = false;
   connectionStatus.error = err;
+  scheduleReconnect();
   notifyConnectionError();
 };

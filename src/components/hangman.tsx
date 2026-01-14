@@ -4,7 +4,6 @@ import { router } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, Pressable, TextInput } from 'react-native';
 //import Confetti from 'react-native-confetti';
-import ConfettiCannon from 'react-native-confetti-cannon';
 import { useTable } from 'spacetimedb/react';
 
 import hangman0 from '@/assets/hangman/hangman0.png';
@@ -17,10 +16,11 @@ import hangman6 from '@/assets/hangman/hangman6.png';
 import { Button, Text, View } from '@/components/ui';
 import { useLatestResponse } from '@/hooks/useLatestResponse';
 import useReducerInvoker from '@/hooks/useReducerInvoker';
-import { shallowEqualIdentity } from '@/lib/utils';
 import { tables } from '@/module_bindings';
 import { useGameDataStore } from '@/store/game-data-store';
 import { useSessionStore } from '@/store/session-store';
+
+import ConfettiOverlay from './confetti-overlay';
 
 import { type GamePlayer } from '../module_bindings/game_player_type';
 import { type Game } from '../module_bindings/game_type';
@@ -236,9 +236,23 @@ export default function Hangman({
     lastResponseIdRef.current = null;
     lastRequestedWordIdRef.current = null;
     setWordObject(null);
-  }, [currentGame.id]);
+  }, [gameId, gpId]);
 
   useEffect(() => {
+    console.log('HANGMAN FIRST RENDER', {
+      gameId,
+      gpId,
+      playerId,
+      types: {
+        gameId: typeof gameId,
+        gpId: typeof gpId,
+        playerId: typeof playerId,
+      },
+      store: {
+        currentGameId: currentGame?.id,
+        currentGpId: currentGamePlayer?.id,
+      },
+    });
     return () => {
       setWon(false);
       setLost(false);
@@ -300,22 +314,24 @@ export default function Hangman({
       'join_game',
     ]);
     let newestRelevant: bigint | null = null;
+    //console.log(responses);
     for (const row of responses) {
       if (!relevantReducers.has(row.reducer)) continue;
       const payload = JSON.parse(row.payload) || '';
       //console.log('payload: ', payload);
 
-      if (row.reducer === 'make_guess') {
-        if (!shallowEqualIdentity(gpId, payload.gp_id)) {
-          continue;
-        }
-        //console.log('guessing with correct id: ', payload.gp_id);
-      }
+      // if (row.reducer === 'make_guess') {
+      //   if (row.identity !== identity) continue;
+      //   if (!shallowEqualIdentity(gpId, payload.gp_id)) {
+      //     continue;
+      //   }
+      //   //console.log('guessing with correct id: ', payload.gp_id);
+      // }
 
       if (row.reducer === 'join_game') {
         const toJoinId = BigInt(payload.id);
-        //console.log(`${toJoinId} trying to join game: ${resolvedGameId}`);
         if (toJoinId !== resolvedGameId) continue;
+        console.log(`${toJoinId} trying to join game: ${resolvedGameId}`);
       }
       if (newestRelevant === null || row.id > newestRelevant) {
         newestRelevant = row.id;
@@ -343,21 +359,18 @@ export default function Hangman({
     fetchGame,
     fetchGamePlayer,
     wordId,
+    identity,
+    gpId,
   ]);
 
   //update current game
   useEffect(() => {
-    if (
-      latestGameResponse &&
-      currentGame?.id &&
-      sameId(latestGameResponse.id, currentGame.id)
-    ) {
-      //const gameResponse = JSON.parse(latestGameResponse);
+    if (!latestGameResponse || !resolvedGamePlayerId) return;
+    if (!sameId(latestGameResponse.id, currentGame.id)) return;
 
-      console.log('game updated to: ', latestGameResponse);
-      setCurrentGame(latestGameResponse);
-    }
-  }, [currentGame?.id, latestGameResponse, setCurrentGame]);
+    console.log('game updated to: ', latestGameResponse);
+    setCurrentGame(latestGameResponse);
+  }, [latestGameResponse, setCurrentGame]);
 
   useEffect(() => {
     setWon(isCurrentGamePlayer ? currentGamePlayer?.is_winner : false);
@@ -371,32 +384,25 @@ export default function Hangman({
     console.log(
       ` ${isCurrentGamePlayer ? currentGamePlayer?.is_winner : false}`
     );
-    if (won) {
-      console.log('handling game won');
-      setShowConfetti(true);
-      setTimeout(() => {
-        setShowConfetti(false);
-        console.log('removed confetti');
-      }, 3000);
-    }
+
+    if (!won) return;
+    console.log('handling game won');
+    setShowConfetti(true);
+    const timeout = setTimeout(() => {
+      setShowConfetti(false);
+      console.log('removed confetti');
+    }, 3000);
     console.log(`Won state is: ${won} and lost state is: ${lost}`);
+    return () => clearTimeout(timeout);
   }, [won, lost]);
 
   //update current game player
   useEffect(() => {
-    if (
-      latestGamePlayerResponse &&
-      resolvedGamePlayerId &&
-      sameId(latestGamePlayerResponse.id, resolvedGamePlayerId)
-    ) {
-      setCurrentGamePlayer(latestGamePlayerResponse);
-    }
-  }, [
-    currentGamePlayer,
-    latestGamePlayerResponse,
-    resolvedGamePlayerId,
-    setCurrentGamePlayer,
-  ]);
+    if (!latestGamePlayerResponse || !resolvedGamePlayerId) return;
+    if (!sameId(latestGamePlayerResponse.id, resolvedGamePlayerId)) return;
+
+    setCurrentGamePlayer(latestGamePlayerResponse);
+  }, [latestGamePlayerResponse, resolvedGamePlayerId, setCurrentGamePlayer]);
 
   useEffect(() => {
     if (!wordId || wordId === 0n) {
@@ -470,14 +476,10 @@ export default function Hangman({
     <>
       <View className="flex-1 items-center justify-center gap-3">
         {/* <Text className="text-2xl text-blue-800">Hangman Game</Text> */}
-        {showConfetti && (
-          <ConfettiCannon
-            count={200}
-            autoStart={true}
-            fadeOut={true}
-            origin={{ x: 50, y: 100 }}
-          />
-        )}
+        <ConfettiOverlay
+          visible={showConfetti}
+          onDone={() => setShowConfetti(false)}
+        />
 
         <View className="mb-4 w-full items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
           <Text className="text-xs uppercase tracking-[3px] text-blue-700">
@@ -566,7 +568,7 @@ export default function Hangman({
             setWon(false);
             setLost(false);
             setShowConfetti(false);
-            router.push('/(app)');
+            router.replace('/(app)');
           }}
         >
           <Text className="text-white">

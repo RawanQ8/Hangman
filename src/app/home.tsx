@@ -6,7 +6,7 @@ import { useSpacetimeDB } from 'spacetimedb/react';
 import { SafeAreaView, Text } from '@/components/ui';
 import { useSessionStore } from '@/store/session-store';
 
-import Hangman from '../../components/hangman';
+import Hangman from '../components/hangman';
 
 export default function Home() {
   const params = useLocalSearchParams<{
