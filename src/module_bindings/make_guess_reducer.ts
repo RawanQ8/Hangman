@@ -12,5 +12,6 @@ import {
 
 export default {
   gamePlayerId: __t.u64(),
+  gameId: __t.u64(),
   guess: __t.string(),
 };

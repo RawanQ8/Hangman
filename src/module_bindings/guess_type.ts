@@ -12,6 +12,7 @@ import {
 
 export default __t.object("Guess", {
   id: __t.u64(),
+  gameId: __t.u64(),
   gpId: __t.u64(),
   letter: __t.string(),
   isCorrect: __t.bool(),

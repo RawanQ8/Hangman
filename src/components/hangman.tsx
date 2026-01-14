@@ -20,11 +20,10 @@ import { tables } from '@/module_bindings';
 import { useGameDataStore } from '@/store/game-data-store';
 import { useSessionStore } from '@/store/session-store';
 
-import ConfettiOverlay from './confetti-overlay';
-
 import { type GamePlayer } from '../module_bindings/game_player_type';
 import { type Game } from '../module_bindings/game_type';
 import { type Word } from '../module_bindings/word_type';
+import ConfettiOverlay from './confetti-overlay';
 
 const KeyboardKey = ({
   letter,
@@ -171,6 +170,14 @@ const sameId = (a: any, b: any) => {
   return norm(a) === norm(b);
 };
 
+function safeParsePayload(payload: string): any | null {
+  try {
+    return JSON.parse(payload);
+  } catch {
+    return null;
+  }
+}
+
 // eslint-disable-next-line max-lines-per-function
 export default function Hangman({
   gameId,
@@ -270,7 +277,6 @@ export default function Hangman({
 
   //Get necessary variables from db
   const wordId: bigint = currentGame?.word_id ?? 0n;
-  //const username = currentPlayer?.username ?? '';
   const word =
     wordObject && wordId !== 0n && sameId(wordObject.id, wordId)
       ? wordObject.word
@@ -310,37 +316,29 @@ export default function Hangman({
     if (!resolvedGameId || !resolvedGamePlayerId) return;
     const relevantReducers = new Set([
       'make_guess',
-      'switch_turn',
+      'game_status',
       'join_game',
     ]);
     let newestRelevant: bigint | null = null;
+    const lastSeen = lastResponseIdRef.current ?? 0n;
     //console.log(responses);
     for (const row of responses) {
+      if (BigInt(row.id) <= lastSeen) continue;
       if (!relevantReducers.has(row.reducer)) continue;
-      const payload = JSON.parse(row.payload) || '';
-      //console.log('payload: ', payload);
-
-      // if (row.reducer === 'make_guess') {
-      //   if (row.identity !== identity) continue;
-      //   if (!shallowEqualIdentity(gpId, payload.gp_id)) {
-      //     continue;
-      //   }
-      //   //console.log('guessing with correct id: ', payload.gp_id);
-      // }
-
-      if (row.reducer === 'join_game') {
-        const toJoinId = BigInt(payload.id);
-        if (toJoinId !== resolvedGameId) continue;
-        console.log(`${toJoinId} trying to join game: ${resolvedGameId}`);
-      }
+      const payload = safeParsePayload(row.payload);
+      const isThisGame =
+        row.reducer === 'join_game'
+          ? BigInt(payload.id) === BigInt(resolvedGameId) // join_game emits game JSON (id)
+          : BigInt(payload.game_id) === BigInt(resolvedGameId);
+      if (!isThisGame) continue;
       if (newestRelevant === null || row.id > newestRelevant) {
         newestRelevant = row.id;
       }
+
+      console.log('approved row: ', row.reducer, row.payload);
     }
 
     if (newestRelevant === null) return;
-    //levant: ', newestRelevant);
-    //console.log('latest response: ', lastResponseIdRef.current);
 
     if (
       lastResponseIdRef.current !== null &&
@@ -452,11 +450,12 @@ export default function Hangman({
       if (!word || !normalizedLetter || !resolvedGamePlayerId) return;
       makeGuess({
         gamePlayerId: resolvedGamePlayerId,
+        gameId: resolvedGameId,
         guess: normalizedLetter,
       });
       //switchTurns({ currentGpId: resolvedGamePlayerId });
     },
-    [resolvedGamePlayerId, makeGuess, word]
+    [resolvedGamePlayerId, resolvedGameId, makeGuess, word]
   );
 
   if (!currentGame) return <Text>Loading Game …</Text>;
