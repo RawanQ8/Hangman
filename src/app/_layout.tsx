@@ -14,20 +14,16 @@ import { SpacetimeDBProvider, useSpacetimeDB } from 'spacetimedb/react';
 
 import { APIProvider } from '@/api';
 import { hydrateAuth, loadSelectedTheme } from '@/lib';
+import { clearReconnectTimer, setReconnectFn } from '@/lib/connection-events';
 import {
   onConnect,
   onConnectError,
   onDisconnect,
 } from '@/lib/connection-handlers';
-import {
-  clearReconnectTimer,
-  setReconnectFn,
-} from '@/lib/connection-events';
 import { getItem } from '@/lib/storage';
 import { useThemeConfig } from '@/lib/use-theme-config';
 
 import { DbConnection, tables } from '../module_bindings';
-
 export { ErrorBoundary } from 'expo-router';
 
 hydrateAuth();

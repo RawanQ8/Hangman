@@ -31,6 +31,14 @@ import {
 } from "spacetimedb";
 
 // Import and reexport all reducer arg types
+import AuthLogin from "./auth_login_reducer";
+export { AuthLogin };
+import AuthLogout from "./auth_logout_reducer";
+export { AuthLogout };
+import AuthRefresh from "./auth_refresh_reducer";
+export { AuthRefresh };
+import AuthRegister from "./auth_register_reducer";
+export { AuthRegister };
 import CreateGame from "./create_game_reducer";
 export { CreateGame };
 import CreateGamePlayer from "./create_game_player_reducer";
@@ -79,6 +87,8 @@ export { SwitchTurns };
 // Import and reexport all procedure arg types
 
 // Import and reexport all table handle types
+import AuthSessionRow from "./auth_session_table";
+export { AuthSessionRow };
 import GameRow from "./game_table";
 export { GameRow };
 import GamePlayerRow from "./game_player_table";
@@ -93,10 +103,14 @@ import ReducerResponseRow from "./reducer_response_table";
 export { ReducerResponseRow };
 import SequenceRow from "./sequence_table";
 export { SequenceRow };
+import UserAccountRow from "./user_account_table";
+export { UserAccountRow };
 import WordRow from "./word_table";
 export { WordRow };
 
 // Import and reexport all types
+import AuthSession from "./auth_session_type";
+export { AuthSession };
 import Game from "./game_type";
 export { Game };
 import GamePlayer from "./game_player_type";
@@ -113,11 +127,24 @@ import SeedWordInput from "./seed_word_input_type";
 export { SeedWordInput };
 import Sequence from "./sequence_type";
 export { Sequence };
+import UserAccount from "./user_account_type";
+export { UserAccount };
 import Word from "./word_type";
 export { Word };
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema(
+  __table({
+    name: 'auth_session',
+    indexes: [
+      { name: 'id', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'auth_session_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, AuthSessionRow),
   __table({
     name: 'game',
     indexes: [
@@ -196,6 +223,17 @@ const tablesSchema = __schema(
     ],
   }, SequenceRow),
   __table({
+    name: 'user_account',
+    indexes: [
+      { name: 'id', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'user_account_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, UserAccountRow),
+  __table({
     name: 'word',
     indexes: [
       { name: 'id', algorithm: 'btree', columns: [
@@ -210,6 +248,10 @@ const tablesSchema = __schema(
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("auth_login", AuthLogin),
+  __reducerSchema("auth_logout", AuthLogout),
+  __reducerSchema("auth_refresh", AuthRefresh),
+  __reducerSchema("auth_register", AuthRegister),
   __reducerSchema("create_game", CreateGame),
   __reducerSchema("create_game_player", CreateGamePlayer),
   __reducerSchema("create_player", CreatePlayer),

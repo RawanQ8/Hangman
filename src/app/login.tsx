@@ -1,6 +1,7 @@
 /* eslint-disable max-lines-per-function */
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
+import { useSpacetimeDB } from 'spacetimedb/react';
 
 import { type FormType, LoginForm } from '@/components/login-form';
 import {
@@ -9,10 +10,13 @@ import {
   LoadingOverlay,
   SafeAreaView,
   ScrollView,
+  showErrorMessage,
   Text,
   View,
 } from '@/components/ui';
+import { useLatestResponse } from '@/hooks/useLatestResponse';
 import useReducerInvoker from '@/hooks/useReducerInvoker';
+import { useAuth } from '@/lib';
 import { useSessionStore } from '@/store/session-store';
 //import { CreatePlayer } from '@/module_bindings';
 
@@ -40,13 +44,22 @@ export default function Login() {
   const router = useRouter();
   const getPlayer = useReducerInvoker('get_player_by_username');
   const createPlayer = useReducerInvoker('create_player');
+  const register = useReducerInvoker('auth_register');
+  const login = useReducerInvoker('auth_login');
   const setUsername = useSessionStore((state) => state.setUsername);
   const setPlayer = useSessionStore((state) => state.setPlayer);
   const setPlayerId = useSessionStore((state) => state.setPlayerId);
   const username = useSessionStore((state) => state.username ?? '');
   const [activeTab, setActiveTab] = useState<AuthTab>('create');
   const [pending, setPending] = useState(false);
+  const [pendingType, setPendingType] = useState<'login' | 'register' | null>(
+    null
+  );
+  const [newUsername, setNewUsername] = useState('');
+
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastLoginRef = useRef<any>(null);
+  const lastRegisterRef = useRef<any>(null);
 
   useEffect(() => {
     return () => {
@@ -54,25 +67,40 @@ export default function Login() {
     };
   }, []);
 
-  const handleAuth = (data: FormType) => {
-    const trimmedName = data.name.trim();
-    let newPlayer = false;
-    if (!trimmedName) return;
+  const { identity } = useSpacetimeDB();
 
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    setPending(true);
-    setUsername(trimmedName);
+  const latestLogin = useLatestResponse('auth_login', identity ?? null);
+  const latestRegister = useLatestResponse('auth_register', identity ?? null);
 
-    if (activeTab === 'create') {
-      createPlayer({ username: trimmedName });
-      getPlayer({ username: trimmedName });
-      newPlayer = true;
-    } else {
-      getPlayer({ username: trimmedName });
-    }
-    const userType = newPlayer ? 'new' : 'login';
+  const loginIsNew = lastLoginRef.current !== latestLogin;
+  const registerIsNew = lastRegisterRef.current !== latestRegister;
 
-    if (userType === 'new') {
+  const signIn = useAuth((state) => state.signIn);
+
+  const handleRegister = (data: FormType) => {
+    const username = data.name.trim();
+    const password = data.password.trim();
+    setPendingType('register');
+
+    try {
+      register({ username: username, password: password });
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      setPending(true);
+
+      if (latestRegister.error) {
+        console.warn(latestRegister.error);
+        showErrorMessage(latestRegister.error);
+        setPending(false);
+        return;
+      }
+      setUsername(username);
+      signIn(latestRegister.access_token);
+
+      createPlayer({ username: username });
+      getPlayer({ username: username });
+
+      console.log('register response: ', latestRegister);
+
       timeoutRef.current = setTimeout(() => {
         router.replace({
           pathname: '/(app)',
@@ -80,14 +108,22 @@ export default function Login() {
         });
         setPending(false);
       }, 900);
-    } else {
-      timeoutRef.current = setTimeout(() => {
-        router.replace({
-          pathname: '/(app)',
-          params: { isGuest: 'false', userType: 'login' },
-        });
-        setPending(false);
-      }, 900);
+    } catch (e) {
+      alert(e);
+    }
+  };
+
+  const handleLogin = (data: FormType) => {
+    const username = data.name.trim();
+    const password = data.password.trim();
+    setNewUsername(username);
+    setPendingType('login');
+
+    try {
+      login({ username: username, password: password });
+      setPending(true);
+    } catch (e) {
+      alert(e);
     }
   };
 
@@ -103,6 +139,62 @@ export default function Login() {
       params: { isGuest: 'true' },
     });
   };
+
+  useEffect(() => {
+    if (!pending) return;
+    console.log('[login] detected changes, in useEffect');
+
+    if (pendingType === 'login') {
+      if (!loginIsNew) {
+        console.log('stale login, leaving effect');
+        return;
+      }
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+      if (latestLogin.error) {
+        console.warn(latestLogin.error);
+        showErrorMessage(latestLogin.error);
+        setPending(false);
+        lastLoginRef.current = latestLogin;
+        return;
+      }
+
+      console.log('login response: ', latestLogin.access_token);
+      signIn(latestLogin.access_token);
+
+      setUsername(newUsername);
+      getPlayer({ username: newUsername });
+
+      timeoutRef.current = setTimeout(() => {
+        router.replace({
+          pathname: '/(app)',
+          params: { isGuest: 'false', userType: 'login' },
+        });
+        setPending(false);
+      }, 900);
+      lastLoginRef.current = latestLogin;
+    }
+    if (pendingType === 'register') {
+      if (!registerIsNew) {
+        return;
+      }
+      lastRegisterRef.current = latestRegister;
+    }
+  }, [
+    pending,
+    activeTab,
+    latestLogin,
+    latestRegister,
+    pendingType,
+    loginIsNew,
+    registerIsNew,
+    signIn,
+    setUsername,
+    newUsername,
+    getPlayer,
+    router,
+    username,
+  ]);
 
   return (
     <>
@@ -153,7 +245,9 @@ export default function Login() {
                 </View>
 
                 <LoginForm
-                  onSubmit={handleAuth}
+                  onSubmit={
+                    activeTab === 'login' ? handleLogin : handleRegister
+                  }
                   defaultName={username}
                   title={TAB_COPY[activeTab].title}
                   subtitle={TAB_COPY[activeTab].subtitle}

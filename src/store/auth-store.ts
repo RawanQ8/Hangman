@@ -33,6 +33,8 @@ const _useAuthStore = create<AuthState>((set, get) => ({
     } catch (e) {
       // catch error here
       // Maybe sign_out user!
+      console.warn(e);
+      get().signOut();
     }
   },
 }));

@@ -17,7 +17,7 @@ import {
 } from '@/components/ui';
 import { showErrorMessage } from '@/components/ui/utils';
 import { useLatestResponse } from '@/hooks/useLatestResponse';
-import { parseReducerError, shallowEqualIdentity } from '@/lib';
+import { parseReducerError, shallowEqualIdentity, useAuth } from '@/lib';
 import { normalizeId } from '@/lib/normalize-id';
 import { tables } from '@/module_bindings';
 import { type Player } from '@/module_bindings/player_type';
@@ -266,6 +266,12 @@ export default function Lobby() {
   useEffect(() => {
     console.log('is guest: ', isGuest);
   }, [isGuest]);
+
+  const authStatus = useAuth.use.status();
+  useEffect(() => {
+    console.log('[lobby] auth status: ', authStatus);
+  }, [authStatus]);
+
   const onCreateNewGame: CreateFormProps['onSubmit'] = async (data) => {
     if (!isActive) {
       console.log('Not connected to SpacetimeDB yet');
