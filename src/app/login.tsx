@@ -3,14 +3,17 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
 
-import { type FormType, LoginForm } from '@/components/login-form';
+import {
+  CreateAccountForm,
+  type FormType,
+  LoginForm,
+} from '@/components/login-form';
 import {
   Button,
   FocusAwareStatusBar,
   LoadingOverlay,
   SafeAreaView,
   ScrollView,
-  showErrorMessage,
   Text,
   View,
 } from '@/components/ui';
@@ -49,6 +52,7 @@ export default function Login() {
   const setUsername = useSessionStore((state) => state.setUsername);
   const setPlayer = useSessionStore((state) => state.setPlayer);
   const setPlayerId = useSessionStore((state) => state.setPlayerId);
+  const setGuest = useAuth((state) => state.setGuest);
   const username = useSessionStore((state) => state.username ?? '');
   const [activeTab, setActiveTab] = useState<AuthTab>('create');
   const [pending, setPending] = useState(false);
@@ -89,7 +93,7 @@ export default function Login() {
 
       if (latestRegister.error) {
         console.warn(latestRegister.error);
-        showErrorMessage(latestRegister.error);
+        alert('Error occurred creating account');
         setPending(false);
         return;
       }
@@ -109,7 +113,8 @@ export default function Login() {
         setPending(false);
       }, 900);
     } catch (e) {
-      alert(e);
+      console.warn(e);
+      alert('Error occurred when registering');
     }
   };
 
@@ -123,7 +128,7 @@ export default function Login() {
       login({ username: username, password: password });
       setPending(true);
     } catch (e) {
-      alert(e);
+      alert(`Error ${e} occurred when logging in`);
     }
   };
 
@@ -134,6 +139,7 @@ export default function Login() {
     setUsername('');
     setPlayer(null);
     setPlayerId(null);
+    setGuest();
     router.replace({
       pathname: '/(app)',
       params: { isGuest: 'true' },
@@ -153,7 +159,7 @@ export default function Login() {
 
       if (latestLogin.error) {
         console.warn(latestLogin.error);
-        showErrorMessage(latestLogin.error);
+        alert(`Login error: ${latestLogin.error}`);
         setPending(false);
         lastLoginRef.current = latestLogin;
         return;
@@ -244,15 +250,23 @@ export default function Login() {
                   })}
                 </View>
 
-                <LoginForm
-                  onSubmit={
-                    activeTab === 'login' ? handleLogin : handleRegister
-                  }
-                  defaultName={username}
-                  title={TAB_COPY[activeTab].title}
-                  subtitle={TAB_COPY[activeTab].subtitle}
-                  ctaLabel={TAB_COPY[activeTab].ctaLabel}
-                />
+                {activeTab === 'login' ? (
+                  <LoginForm
+                    onSubmit={handleLogin}
+                    defaultName={username}
+                    title={TAB_COPY[activeTab].title}
+                    subtitle={TAB_COPY[activeTab].subtitle}
+                    ctaLabel={TAB_COPY[activeTab].ctaLabel}
+                  />
+                ) : (
+                  <CreateAccountForm
+                    onSubmit={handleRegister}
+                    defaultName={username}
+                    title={TAB_COPY[activeTab].title}
+                    subtitle={TAB_COPY[activeTab].subtitle}
+                    ctaLabel={TAB_COPY[activeTab].ctaLabel}
+                  />
+                )}
               </View>
 
               <View className="shrink-0">

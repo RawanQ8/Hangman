@@ -6,10 +6,11 @@ import { getToken, removeToken, setToken } from './utils';
 
 interface AuthState {
   token: TokenType | null;
-  status: 'idle' | 'signOut' | 'signIn';
+  status: 'idle' | 'signOut' | 'signIn' | 'guest';
   signIn: (data: TokenType) => void;
   signOut: () => void;
   hydrate: () => void;
+  setGuest: () => void;
 }
 
 const _useAuth = create<AuthState>((set, get) => ({
@@ -29,14 +30,16 @@ const _useAuth = create<AuthState>((set, get) => ({
       if (userToken !== null) {
         get().signIn(userToken);
       } else {
-        get().signOut();
+        get().setGuest();
       }
     } catch (e) {
       // only to remove eslint error, handle the error properly
       console.error(e);
-      // catch error here
-      // Maybe sign_out user!
+      get().signOut();
     }
+  },
+  setGuest: () => {
+    set({ status: 'guest' });
   },
 }));
 

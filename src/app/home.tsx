@@ -19,10 +19,9 @@ export default function Home() {
   const setPlayerId = useSessionStore((state) => state.setPlayerId);
   console.log('received data: ', params);
 
-  const gameIdToSend = BigInt(params.gameId ? params.gameId : 0);
-  console.log('type of game id to send', typeof gameIdToSend);
-  const playerIdToSend = BigInt(params.playerId ? params.playerId : 0);
-  const gpIdToSend = BigInt(params.gpId ? params.gpId : 0);
+  const gameIdToSend = BigInt(params.gameId ?? 0);
+  const playerIdToSend = BigInt(params.playerId ?? 0);
+  const gpIdToSend = BigInt(params.gpId ?? 0);
 
   useEffect(() => {
     if (params.playerId) {

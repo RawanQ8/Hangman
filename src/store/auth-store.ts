@@ -39,4 +39,4 @@ const _useAuthStore = create<AuthState>((set, get) => ({
   },
 }));
 
-export const useGameDataStore = createSelectors(_useAuthStore);
+export const useAuthStore = createSelectors(_useAuthStore);

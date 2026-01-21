@@ -6,13 +6,14 @@ import { ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import FlashMessage from 'react-native-flash-message';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SpacetimeDBProvider, useSpacetimeDB } from 'spacetimedb/react';
 
 import { APIProvider } from '@/api';
+import { useConnection } from '@/hooks/useConnection';
 import { hydrateAuth, loadSelectedTheme } from '@/lib';
 import { clearReconnectTimer, setReconnectFn } from '@/lib/connection-events';
 import {
@@ -27,6 +28,7 @@ import { DbConnection, tables } from '../module_bindings';
 export { ErrorBoundary } from 'expo-router';
 
 hydrateAuth();
+//useAuth.use.status();
 loadSelectedTheme();
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -37,36 +39,8 @@ SplashScreen.setOptions({
   fade: true,
 });
 
-// const onConnect = (conn: DbConnection, identity: Identity, token: string) => {
-//   console.log(
-//     'Connected to SpacetimeDB with identity:',
-//     identity.toHexString()
-//   );
-//   // Store auth token so we can reconnect with same identity
-//   // Persist the auth token using native storage (localStorage is not available in RN)
-//   setItem('auth_token', token);
-//   const { setIdentity, setConnection } = useSessionStore.getState();
-//   setIdentity(identity);
-//   setConnection(conn);
-// };
-
-// const onDisconnect = () => {
-//   console.log('Disconnected from SpacetimeDB');
-// };
-
-// const onConnectError = (_ctx: ErrorContext, err: Error) => {
-//   console.log('*** onConnectError fired ***', err);
-
-//   // If it's a normal Error, log message
-//   if (err instanceof Error) {
-//     console.log('Spacetime error message:', err.message);
-//   } else {
-//     // It’s likely a generic Event from WebSocket. Log its target.
-//     // @ts-expect-error – we know target is probably a WebSocket
-//     const ws = err.target;
-//     console.log('WebSocket readyState:', ws?.readyState, 'URL:', ws?.url);
-//   }
-// };
+const token = getItem<string>('auth_token') || undefined;
+//const token = String(useAuth.getState().token) || undefined;
 
 const connectionBuilder = DbConnection.builder()
   .withUri('wss://maincloud.spacetimedb.com') // where `spacetime start` is running
@@ -77,7 +51,7 @@ const connectionBuilder = DbConnection.builder()
   )
   // React Native lacks `DecompressionStream`, so disable gzip to avoid runtime errors.
   .withCompression('none')
-  .withToken(getItem<string>('auth_token') || undefined)
+  .withToken(token)
   .onConnect(onConnect)
   .onDisconnect(onDisconnect)
   .onConnectError(onConnectError);
@@ -107,10 +81,24 @@ function TableAccessorsSync() {
   return null;
 }
 
-// function SessionPlayerSync() {
-//   useSessionPlayerSync();
-//   return null;
-// }
+function ConnectionStatusBanner() {
+  const { isActive } = useSpacetimeDB();
+  const connection = useConnection();
+
+  const showBanner =
+    !isActive || !connection.isConnected || Boolean(connection.error);
+  if (!showBanner) return null;
+
+  const message = connection.error
+    ? 'Connection lost. Reconnecting to SpacetimeDB...'
+    : 'Reconnecting to SpacetimeDB...';
+
+  return (
+    <View style={styles.banner}>
+      <Text style={styles.bannerText}>{message}</Text>
+    </View>
+  );
+}
 
 export default function RootLayout() {
   useEffect(() => {
@@ -169,9 +157,9 @@ function Providers({ children }: { children: React.ReactNode }) {
             connectionBuilder={connectionBuilder}
           >
             <TableAccessorsSync />
-            {/* <SessionPlayerSync /> */}
             <APIProvider>
               <BottomSheetModalProvider>
+                <ConnectionStatusBanner />
                 {children}
                 <FlashMessage position="top" />
               </BottomSheetModalProvider>
@@ -186,5 +174,21 @@ function Providers({ children }: { children: React.ReactNode }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  banner: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#fcd34d',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bannerText: {
+    color: '#713f12',
+    fontWeight: '600',
   },
 });

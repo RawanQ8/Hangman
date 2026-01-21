@@ -326,6 +326,10 @@ export default function Hangman({
       if (BigInt(row.id) <= lastSeen) continue;
       if (!relevantReducers.has(row.reducer)) continue;
       const payload = safeParsePayload(row.payload);
+      if (payload.error) {
+        console.warn(payload.error);
+        continue;
+      }
       const isThisGame =
         row.reducer === 'join_game'
           ? BigInt(payload.id) === BigInt(resolvedGameId) // join_game emits game JSON (id)

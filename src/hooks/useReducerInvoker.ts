@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
 
 import { reducers } from '../module_bindings';
+import { useConnection } from './useConnection';
 
 type ReducerParams = Record<string, unknown>;
 
@@ -20,6 +21,7 @@ const getReducerSchema = (name: string) => {
 export default function useReducerInvoker(name: string) {
   const schema = useMemo(() => getReducerSchema(name), [name]);
   const { getConnection, isActive } = useSpacetimeDB();
+  const connection = useConnection();
   const queueRef = useRef<ReducerParams[]>([]);
 
   const run = useCallback(
@@ -30,14 +32,20 @@ export default function useReducerInvoker(name: string) {
         return;
       }
       const conn = getConnection();
-      // Wait until the websocket is fully active before sending,
-      // otherwise spacetimedb tries to send on a closed socket.
-      if (!conn || !isActive) {
+      const ready =
+        Boolean(conn) &&
+        isActive &&
+        connection.isConnected &&
+        !connection.error;
+      if (!ready) {
+        console.warn(
+          `Connection not ready (isActive=${isActive}, connected=${connection.isConnected}, hasError=${Boolean(connection.error)}), deferring reducer ${name}`
+        );
         queueRef.current.push(params);
         return;
       }
       try {
-        conn.callReducerWithParams(
+        conn?.callReducerWithParams(
           schema.name,
           schema.paramsType,
           params,
@@ -46,20 +54,36 @@ export default function useReducerInvoker(name: string) {
       } catch (err) {
         console.log(params);
         console.error(err);
+        // If the socket slipped into a bad state mid-call, re-queue the work
+        // so it can run once the connection is healthy again.
+        queueRef.current.push(params);
       }
     },
-    [schema, getConnection, isActive, name]
+    [
+      schema,
+      getConnection,
+      isActive,
+      name,
+      connection.error,
+      connection.isConnected,
+    ]
   );
 
   useEffect(() => {
-    if (!isActive || queueRef.current.length === 0 || !schema) {
+    if (
+      !isActive ||
+      queueRef.current.length === 0 ||
+      !schema ||
+      connection.error ||
+      !connection.isConnected
+    ) {
       return;
     }
     const pending = queueRef.current.splice(0);
     for (const payload of pending) {
       run(payload);
     }
-  }, [isActive, run, schema]);
+  }, [connection.error, connection.isConnected, isActive, run, schema]);
 
   return run;
 }

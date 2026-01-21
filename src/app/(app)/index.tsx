@@ -15,7 +15,6 @@ import {
   Text,
   View,
 } from '@/components/ui';
-import { showErrorMessage } from '@/components/ui/utils';
 import { useLatestResponse } from '@/hooks/useLatestResponse';
 import { parseReducerError, shallowEqualIdentity, useAuth } from '@/lib';
 import { normalizeId } from '@/lib/normalize-id';
@@ -35,12 +34,10 @@ const watchedReducers = new Set([
 
 export default function Lobby() {
   const router = useRouter();
-  const { isGuest: isGuestParam, userType: playerTypeParam } =
-    useLocalSearchParams<{
-      isGuest?: string;
-      userType?: string;
-    }>();
-  const isGuest = isGuestParam === 'true';
+  const { userType: playerTypeParam } = useLocalSearchParams<{
+    userType?: string;
+  }>();
+  const isGuest = useAuth.use.status() === 'guest';
   const [mode, setMode] = useState<'create' | 'join'>('create');
   const [pendingCreate, setPendingCreate] = useState(false);
   const [pendingJoin, setPendingJoin] = useState(false);
@@ -73,6 +70,11 @@ export default function Lobby() {
     console.log('Current Player is now: ', currentPlayer);
   }, [currentPlayer, playerTypeParam]);
 
+  useEffect(() => {
+    if (isGuest) {
+    }
+  }, [isGuest]);
+
   const currentGame = useLatestResponse('create_game', identity) ?? null;
   const currentGamePlayer =
     useLatestResponse('create_game_player', identity) ?? null;
@@ -101,6 +103,15 @@ export default function Lobby() {
         currentPlayer,
         currentGame
       );
+      return;
+    }
+
+    if (currentPlayer.error) {
+      console.warn(currentPlayer.error);
+      return;
+    }
+    if (currentGame.error) {
+      console.warn(currentGame.error);
       return;
     }
 
@@ -144,8 +155,12 @@ export default function Lobby() {
     // JOIN FLOW: we only need the new player and the target game ID typed by the user
     if (pendingJoin) {
       if (!targetGameId) return;
+      const playerIsFresh = currentPlayer.id !== lastPlayerIdRef.current;
+
       if (isGuest) {
-        if (currentPlayer.id === lastPlayerIdRef.current) {
+        console.log(`guest with id: ${currentPlayer?.id}`);
+        if (!playerIsFresh) {
+          console.log('player is stale, cant create game player');
           return;
         }
       }
@@ -153,9 +168,14 @@ export default function Lobby() {
         console.log('joining with existing player: ', currentPlayer?.username);
       }
 
+      if (currentPlayer.error) {
+        console.warn(currentPlayer.error);
+        return;
+      }
       const playerId = normalizeId(currentPlayer.id);
       const gameId = normalizeId(targetGameId);
       try {
+        console.log(`attempting to join game ${gameId} as player ${playerId}`);
         joinGame({ gameId, playerId });
       } catch (err) {
         console.error(err);
@@ -211,6 +231,10 @@ export default function Lobby() {
       console.log(`Still in old game player: ${currentGamePlayer.id}`);
       return;
     }
+    if (!currentGamePlayer) {
+      console.log('Cant find game player');
+      return;
+    }
 
     const playerId = String(currentPlayer.id);
     const gpId = String(currentGamePlayer.id);
@@ -219,6 +243,12 @@ export default function Lobby() {
 
     if (pendingCreate && currentGame) {
       const gameId = String(currentGame.id);
+      if (currentGame.error || currentGamePlayer.error) {
+        console.warn(currentGame.error || currentGamePlayer.error);
+        alert(currentGame.error || currentGamePlayer.error);
+        setPendingCreate(false);
+        return;
+      }
       console.log(`creating game with ids: ${gameId}, ${playerId} and ${gpId}`);
       router.replace({
         pathname: '/home',
@@ -231,7 +261,7 @@ export default function Lobby() {
 
       // Mark these as the last-used responses
       lastPlayerIdRef.current = currentPlayer.id;
-      lastGameIdRef.current = currentGame.id;
+      lastGameIdRef.current = currentGame.id ?? 0;
       lastGpIdRef.current = currentGamePlayer.id;
       setPendingCreate(false);
     }
@@ -239,8 +269,14 @@ export default function Lobby() {
     // JOIN FLOW: use the game ID typed by the user
     if (pendingJoin && targetGameId) {
       const gameId = String(targetGameId);
+      console.log('attempt to join game', targetGameId);
+      if (currentGame.error) {
+        console.warn(currentGame.error);
+        alert(currentGame.error);
+        setPendingCreate(false);
+        return;
+      }
       console.log(`joining game with ids: ${gameId}, ${playerId} and ${gpId}`);
-
       router.replace({
         pathname: '/home',
         params: {
@@ -360,13 +396,13 @@ export default function Lobby() {
 
   useEffect(() => {
     if (!errorMessage) return;
-    showErrorMessage(errorMessage);
+    alert(errorMessage);
   }, [errorMessage]);
 
   return (
     <>
       <FocusAwareStatusBar />
-      <SafeAreaView className="flex-1 p-4">
+      <SafeAreaView className="flex-1 p-5">
         <View className="mb-4 items-center">
           <Text className="text-3xl font-bold">Hangman</Text>
           <Text className="text-gray-600">
@@ -392,23 +428,25 @@ export default function Lobby() {
         {mode === 'create' ? (
           <NewGameForm
             onSubmit={onCreateNewGame}
-            defaultName={username !== 'undefined' ? username : ''}
+            defaultName={
+              username !== 'undefined' ? (!isGuest ? username : '') : ''
+            }
+            nameLocked={!isGuest}
           />
         ) : (
           <JoinGameForm
             onSubmit={onJoinGame}
             defaultName={username !== 'undefined' ? username : ''}
+            nameLocked={!isGuest}
           />
         )}
-
         {errorMessage && (
           <Text className="mt-2 text-center text-red-600">{errorMessage}</Text>
         )}
-
         <Button
           onPress={() => router.push('/login')}
           label="Go to Login "
-          className="w-1/2 self-center bg-blue-900"
+          className="mt-6 w-1/2 self-center bg-blue-900"
         ></Button>
       </SafeAreaView>
     </>

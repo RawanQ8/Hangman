@@ -72,19 +72,21 @@ interface ControlledInputProps<T extends FieldValues>
     InputControllerType<T> {}
 
 export const Input = React.forwardRef<NTextInput, NInputProps>((props, ref) => {
-  const { label, error, testID, ...inputProps } = props;
+  const { label, error, testID, disabled, ...inputProps } = props;
   const [isFocussed, setIsFocussed] = React.useState(false);
   const onBlur = React.useCallback(() => setIsFocussed(false), []);
   const onFocus = React.useCallback(() => setIsFocussed(true), []);
+  const editable =
+    disabled === true ? false : inputProps.editable ?? (disabled ? false : true);
 
   const styles = React.useMemo(
     () =>
       inputTv({
         error: Boolean(error),
         focused: isFocussed,
-        disabled: Boolean(props.disabled),
+        disabled: Boolean(disabled),
       }),
-    [error, isFocussed, props.disabled]
+    [error, isFocussed, disabled]
   );
 
   return (
@@ -104,6 +106,7 @@ export const Input = React.forwardRef<NTextInput, NInputProps>((props, ref) => {
         className={styles.input()}
         onBlur={onBlur}
         onFocus={onFocus}
+        editable={editable}
         {...inputProps}
         style={StyleSheet.flatten([
           { writingDirection: I18nManager.isRTL ? 'rtl' : 'ltr' },

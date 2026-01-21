@@ -48,10 +48,12 @@ export type LoginFormProps = {
 export type CreateFormProps = {
   onSubmit?: SubmitHandler<CreateType>;
   defaultName?: string;
+  nameLocked?: boolean;
 };
 export type JoinFormProps = {
   onSubmit?: SubmitHandler<JoinType>;
   defaultName?: string;
+  nameLocked?: boolean;
 };
 
 export const LoginForm = ({
@@ -124,19 +126,17 @@ export const LoginForm = ({
 
 export const CreateAccountForm = ({
   onSubmit = () => {},
-  defaultName = '',
   title = 'Welcome back',
   subtitle = 'Log in to continue your game',
   ctaLabel = 'Continue',
 }: LoginFormProps) => {
   const { handleSubmit, control, reset } = useForm<FormType>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { name: defaultName },
   });
 
   useEffect(() => {
-    reset((prev) => ({ ...prev, name: defaultName }));
-  }, [defaultName, reset]);
+    reset((prev) => ({ ...prev }));
+  }, [reset]);
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -193,6 +193,7 @@ export const CreateAccountForm = ({
 export const NewGameForm = ({
   onSubmit = () => {},
   defaultName = '',
+  nameLocked = false,
 }: CreateFormProps) => {
   const { handleSubmit, control, reset } = useForm<CreateType>({
     resolver: zodResolver(newGameSchema),
@@ -205,30 +206,35 @@ export const NewGameForm = ({
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={{ flex: 3 }}
       behavior="padding"
       keyboardVerticalOffset={10}
     >
-      <View className="flex-1 justify-center p-4">
-        <View className="items-center justify-center">
+      <View className="flex-1 justify-center rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl">
+        <View className="items-center justify-center gap-2">
           <Text
             testID="form-title"
-            className="pb-6 text-center text-4xl font-bold"
+            className="text-center text-2xl font-extrabold text-slate-900"
           >
-            New Game
-          </Text>
-
-          <Text className="mb-6 max-w-xs text-center text-gray-500">
-            Create a new game
+            Host a new game
           </Text>
         </View>
 
-        <ControlledInput
-          testID="name"
-          control={control}
-          name="name"
-          label="Name"
-        />
+        <View className="mt-4 space-y-3 rounded-xl bg-slate-50/70 p-3">
+          <ControlledInput
+            testID="name"
+            control={control}
+            name="name"
+            label="Name"
+            disabled={nameLocked}
+            editable={!nameLocked}
+          />
+          {nameLocked && (
+            <Text className="text-xs font-medium text-slate-500">
+              Your signed-in username is locked for this session.
+            </Text>
+          )}
+        </View>
         <Button
           testID="login-button"
           label="Create Game"
@@ -242,6 +248,7 @@ export const NewGameForm = ({
 export const JoinGameForm = ({
   onSubmit = () => {},
   defaultName = '',
+  nameLocked = false,
 }: JoinFormProps) => {
   const { handleSubmit, control, reset, getValues } = useForm<JoinType>({
     resolver: zodResolver(joinGameSchema),
@@ -260,34 +267,39 @@ export const JoinGameForm = ({
       behavior="padding"
       keyboardVerticalOffset={10}
     >
-      <View className="flex-1 justify-center p-4">
-        <View className="items-center justify-center">
+      <View className="flex-1 justify-center rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl">
+        <View className="items-start justify-center gap-2">
           <Text
             testID="form-title"
-            className="pb-6 text-center text-4xl font-bold"
+            className="text-center text-2xl font-extrabold text-slate-900"
           >
             Join Game
           </Text>
-
-          <Text className="mb-6 max-w-xs text-center text-gray-500">
-            Enter your name and the game code to join.
-          </Text>
         </View>
 
-        <ControlledInput
-          testID="name"
-          control={control}
-          name="name"
-          label="Name"
-        />
+        <View className="mt-4 space-y-3 rounded-xl bg-slate-50/70 p-3">
+          <ControlledInput
+            testID="name"
+            control={control}
+            name="name"
+            label="Name"
+            disabled={nameLocked}
+            editable={!nameLocked}
+          />
+          {nameLocked && (
+            <Text className="text-xs font-medium text-slate-500">
+              Signed-in users keep the same username when joining.
+            </Text>
+          )}
 
-        <ControlledInput
-          testID="game-id"
-          control={control}
-          name="id"
-          label="Game ID"
-          placeholder="e.g. ABC123"
-        />
+          <ControlledInput
+            testID="game-id"
+            control={control}
+            name="id"
+            label="Game ID"
+            placeholder="e.g. ABC123"
+          />
+        </View>
         <Button
           testID="login-button"
           label="Join Game"
