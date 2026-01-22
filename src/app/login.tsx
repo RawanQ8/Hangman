@@ -44,7 +44,15 @@ const TAB_COPY: Record<
 };
 
 export default function Login() {
+  const [activeTab, setActiveTab] = useState<AuthTab>('create');
+  const [pending, setPending] = useState(false);
+  const [pendingType, setPendingType] = useState<'login' | 'register' | null>(
+    null
+  );
+  const [newUsername, setNewUsername] = useState('');
   const router = useRouter();
+  const username = useSessionStore((state) => state.username ?? '');
+
   const getPlayer = useReducerInvoker('get_player_by_username');
   const createPlayer = useReducerInvoker('create_player');
   const register = useReducerInvoker('auth_register');
@@ -53,23 +61,10 @@ export default function Login() {
   const setPlayer = useSessionStore((state) => state.setPlayer);
   const setPlayerId = useSessionStore((state) => state.setPlayerId);
   const setGuest = useAuth((state) => state.setGuest);
-  const username = useSessionStore((state) => state.username ?? '');
-  const [activeTab, setActiveTab] = useState<AuthTab>('create');
-  const [pending, setPending] = useState(false);
-  const [pendingType, setPendingType] = useState<'login' | 'register' | null>(
-    null
-  );
-  const [newUsername, setNewUsername] = useState('');
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastLoginRef = useRef<any>(null);
   const lastRegisterRef = useRef<any>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
 
   const { identity } = useSpacetimeDB();
 
@@ -84,6 +79,7 @@ export default function Login() {
   const handleRegister = (data: FormType) => {
     const username = data.name.trim();
     const password = data.password.trim();
+    setNewUsername(username);
     setPendingType('register');
 
     try {
@@ -93,19 +89,20 @@ export default function Login() {
 
       if (latestRegister.error) {
         console.warn(latestRegister.error);
-        alert('Error occurred creating account');
+        alert(`Error occurred creating account ${latestRegister.error}`);
         setPending(false);
         return;
       }
       setUsername(username);
       signIn(latestRegister.access_token);
 
-      createPlayer({ username: username });
-      getPlayer({ username: username });
-
       console.log('register response: ', latestRegister);
 
       timeoutRef.current = setTimeout(() => {
+        if (!latestRegister.error) {
+          createPlayer({ username: username });
+          getPlayer({ username: username });
+        }
         router.replace({
           pathname: '/(app)',
           params: { isGuest: 'false', userType: 'new' },
@@ -147,6 +144,12 @@ export default function Login() {
   };
 
   useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!pending) return;
     console.log('[login] detected changes, in useEffect');
 
@@ -158,9 +161,9 @@ export default function Login() {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
       if (latestLogin.error) {
-        console.warn(latestLogin.error);
-        alert(`Login error: ${latestLogin.error}`);
-        setPending(false);
+        // console.warn(latestLogin.error);
+        // alert(`Login error: ${latestLogin.error}`);
+        // setPending(false);
         lastLoginRef.current = latestLogin;
         return;
       }
@@ -182,6 +185,7 @@ export default function Login() {
     }
     if (pendingType === 'register') {
       if (!registerIsNew) {
+        console.log('register ref stale');
         return;
       }
       lastRegisterRef.current = latestRegister;

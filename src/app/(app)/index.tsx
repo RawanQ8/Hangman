@@ -46,6 +46,7 @@ export default function Lobby() {
   const spacetime = useSpacetimeDB();
   const { isActive } = spacetime;
   const [responses] = useTable(tables.reducerResponse) ?? [];
+  const setUsername = useSessionStore((s) => s.setUsername);
 
   const identity = useSessionStore((s) => s.identity);
 
@@ -325,9 +326,11 @@ export default function Lobby() {
 
     const username = data.name.trim();
     console.log('username:', username);
+
     if (isGuest) {
-      createPlayer({ username });
-      getLatestPlayer({ username });
+      setUsername(username);
+      createPlayer();
+      getLatestPlayer();
     } else getLatestPlayer({ username });
     createGame();
   };
@@ -352,7 +355,9 @@ export default function Lobby() {
     console.log('username:', username);
 
     if (isGuest) {
-      createPlayer({ username });
+      setUsername(username);
+      createPlayer({});
+      getLatestPlayer();
     } else getLatestPlayer({ username });
   };
 
